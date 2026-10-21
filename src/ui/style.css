@@ -1,0 +1,34 @@
+:root{
+  --ink:#efe6da; --ink-dim:#b9ab98; --panel:rgba(30,24,20,.82); --panel-line:rgba(239,230,218,.14);
+  --brass:#c99a5b; --chip:rgba(239,230,218,.08); --bg:#1b1714;
+  box-sizing:border-box;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --panel:rgba(22,18,15,.86); --bg:#141110; } }
+:root[data-theme="dark"]{ --panel:rgba(22,18,15,.86); --bg:#141110; }
+*,*::before,*::after{box-sizing:inherit}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--ink);
+  font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;}
+#stage{position:fixed;inset:0}
+#stage canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+.title{position:fixed;left:14px;top:14px;pointer-events:none;background:var(--panel);
+  border:1px solid var(--panel-line);border-radius:12px;padding:10px 14px;max-width:calc(100% - 230px)}
+.title h1{margin:0;font-size:18px;font-weight:700;letter-spacing:.04em}
+.title p{margin:4px 0 0;font-size:12.5px;color:var(--ink-dim)}
+.dock{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;
+  display:flex;flex-direction:column;gap:8px;align-items:center;width:min(760px,calc(100% - 20px))}
+.bar{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;background:var(--panel);
+  border:1px solid var(--panel-line);border-radius:14px;padding:6px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.seg{display:flex;background:var(--chip);border-radius:10px;padding:2px}
+button{font:inherit;color:var(--ink);background:transparent;border:0;border-radius:8px;padding:7px 12px;font-size:13.5px;cursor:pointer;line-height:1.2}
+button:hover{background:rgba(239,230,218,.08)}
+button[aria-pressed="true"]{background:var(--brass);color:#22180f;font-weight:500}
+button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.rooms button{padding:6px 10px;font-size:13px;color:var(--ink-dim)}
+.rooms button:hover{color:var(--ink)}
+.hint{font-size:12px;color:var(--ink-dim);text-align:center;background:var(--panel);border-radius:8px;padding:5px 10px}
+#map{position:fixed;right:14px;top:14px;background:var(--panel);border:1px solid var(--panel-line);
+  border-radius:12px;padding:8px;cursor:crosshair;display:none}
+#map canvas{display:block}
+#map span{display:block;font-size:11px;color:var(--ink-dim);margin-top:5px;text-align:center}
+#err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;font-size:15px;color:var(--ink-dim)}
+@media (prefers-reduced-motion: reduce){ *{transition:none!important} }

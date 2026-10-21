@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>嵐・悠・羊駝的家｜3D 模型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="stage"></div>
+<div class="title"><h1>嵐・悠・羊駝的家</h1><p>依 V3 平面修改，外廓 9.75 × 11.60 m，淨高 2.8 m，現代簡約、深色木質、暖光</p></div>
+<div id="map"><canvas id="mapc"></canvas><span>點地圖可直接移動過去</span></div>
+<div class="dock">
+  <div class="bar rooms" id="rooms"></div>
+  <div class="bar">
+    <div class="seg" role="group" aria-label="視角">
+      <button id="bOrbit" aria-pressed="true">俯瞰</button>
+      <button id="bWalk" aria-pressed="false">走進去</button>
+    </div>
+    <div class="seg" role="group" aria-label="光線">
+      <button id="bDay" aria-pressed="false">白天</button>
+      <button id="bNight" aria-pressed="true">夜晚</button>
+    </div>
+    <button id="bCut" aria-pressed="true">剖切牆面</button>
+  </div>
+  <div class="hint" id="hint"></div>
+</div>
+<div id="err">這個瀏覽器無法啟用 WebGL，請換用最新版 Chrome 或 Edge 開啟。</div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>參考版對照</title>
+<style>
+  :root { --bg:#141110; --ink:#efe6da; --dim:#b9ab98; --panel:rgba(22,18,15,.9); --line:rgba(239,230,218,.14); --brass:#c99a5b; }
+  html, body { height:100%; margin:0; overflow:hidden; background:var(--bg); color:var(--ink);
+    font:13px/1.4 "Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif; }
+  .top { position:fixed; left:0; right:0; top:0; height:40px; display:flex; align-items:center; gap:10px; padding:0 12px;
+    background:var(--panel); border-bottom:1px solid var(--line); z-index:2; }
+  .top b { font-weight:700; letter-spacing:.04em; }
+  .top .hint { color:var(--dim); }
+  .seg { display:flex; background:rgba(239,230,218,.08); border-radius:8px; padding:2px; }
+  button { font:inherit; color:var(--ink); background:transparent; border:0; border-radius:6px; padding:5px 10px; cursor:pointer; }
+  button[aria-pressed="true"] { background:var(--brass); color:#22180f; }
+  .stage { position:fixed; left:0; right:0; top:41px; bottom:0; display:flex; gap:2px; background:var(--line); }
+  .pane { position:relative; flex:1; min-width:0; }
+  .pane iframe { position:absolute; inset:0; width:100%; height:100%; border:0; background:var(--bg); }
+  .tag { position:absolute; left:10px; bottom:10px; z-index:1; pointer-events:none;
+    background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:3px 12px; font-size:12px; }
+  .tag.lead::after { content:'・操作中'; color:var(--brass); }
+  /* A/B 疊圖：兩個畫面疊在一起，只顯示一個 */
+  .stage.ab .pane { position:absolute; inset:0; }
+  .stage.ab .pane.off { opacity:0; pointer-events:none; }
+</style>
+</head>
+<body>
+<div class="top">
+  <b>參考版對照</b>
+  <div class="seg" role="group" aria-label="版面">
+    <button id="bSide" aria-pressed="true">並排</button>
+    <button id="bAB" aria-pressed="false">A/B 疊圖</button>
+  </div>
+  <span class="hint" id="hint">在任一邊操作，另一邊會跟著同步鏡頭、視角模式、日夜與剖切。</span>
+</div>
+<div class="stage" id="stage">
+  <div class="pane" id="pRef"><span class="tag" id="tRef">參考版（r147 單檔）</span><iframe id="fRef" src="/handoff/reference/house3d_current.html"></iframe></div>
+  <div class="pane" id="pNew"><span class="tag" id="tNew">新版（Vite + r186）</span><iframe id="fNew" src="/index.html"></iframe></div>
+</div>
+<script type="module" src="/tools/verify/compare.ts"></script>
+</body>
+</html>

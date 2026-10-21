@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>參考版比對（自動）</title>
+<style>
+  :root { --bg:#141110; --ink:#efe6da; --dim:#b9ab98; --line:rgba(239,230,218,.14); --ok:#8fbf7a; --bad:#e07a5f; }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--ink); font:13px/1.5 system-ui, "Microsoft JhengHei", sans-serif; }
+  h1 { font-size:16px; margin:0 0 8px; }
+  .frames { display:flex; gap:8px; margin-bottom:12px; }
+  .frames iframe { width:800px; height:450px; border:1px solid var(--line); }
+  #status { color:var(--dim); margin-bottom:8px; }
+  table { border-collapse:collapse; margin:8px 0 16px; }
+  td, th { border:1px solid var(--line); padding:4px 8px; text-align:left; vertical-align:top; }
+  .ok { color:var(--ok); } .bad { color:var(--bad); }
+  .view { display:flex; gap:6px; align-items:flex-start; margin-bottom:10px; }
+  .view canvas { width:400px; height:auto; border:1px solid var(--line); }
+  .view .meta { width:220px; color:var(--dim); }
+  pre { white-space:pre-wrap; max-height:320px; overflow:auto; background:rgba(239,230,218,.04); padding:8px; }
+</style>
+</head>
+<body>
+<h1>參考版（左）↔ 新版（右）自動比對</h1>
+<div id="status">載入中…</div>
+<div class="frames">
+  <iframe id="fRef" src="/tools/verify/ref.html"></iframe>
+  <iframe id="fNew" src="/index.html"></iframe>
+</div>
+<div id="summary"></div>
+<div id="views"></div>
+<pre id="detail"></pre>
+<script type="module" src="./harness.ts"></script>
+</body>
+</html>

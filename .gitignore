@@ -1,0 +1,8 @@
+node_modules/
+dist/
+verify-out/
+tools/verify/ref.html
+__pycache__/
+*.log
+.claude/
+handoff/
