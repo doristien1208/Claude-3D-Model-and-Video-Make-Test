@@ -3,10 +3,12 @@ import type { ItemOf } from '../data/query';
 import type { Materials } from '../materials/library';
 import { buildArchitecture, type Architecture } from './architecture';
 import * as decor from './decor';
+import { buildDoors, collectObstacles, type Doors } from './doors';
 import * as fixtures from './fixtures';
 import * as furniture from './furniture';
 import * as millwork from './millwork';
 import { Build } from './prims';
+import { buildBaseboards } from './trim';
 
 type Builder<T extends ItemType> = (b: Build, it: ItemOf<T>) => void;
 
@@ -50,18 +52,34 @@ const registry: { [T in ItemType]: Builder<T> } = {
   storageBox: decor.storageBox,
 };
 
+/** 把 from 之後新加入 root 的物件標上來源，供碰撞檢查與除錯辨識 */
+function tagSince(b: Build, from: number, item: string): void {
+  for (let i = from; i < b.root.children.length; i++) b.root.children[i].userData.item ??= item;
+}
+
 function buildItem(b: Build, it: Item): void {
+  const from = b.root.children.length;
   (registry[it.type] as Builder<typeof it.type>)(b, it as never);
+  tagSince(b, from, it.id);
 }
 
 export interface House extends Architecture {
   build: Build;
+  doors: Doors;
 }
 
 export function buildHouse(materials: Materials): House {
   const b = new Build(materials);
   const arch = buildArchitecture(b);
+  tagSince(b, 0, '牆體');
   for (const it of items) buildItem(b, it);
+  let from = b.root.children.length;
   fixtures.downlights(b, lighting.downlights);
-  return { build: b, ...arch };
+  tagSince(b, from, '崁燈');
+  from = b.root.children.length;
+  buildBaseboards(b);
+  tagSince(b, from, '踢腳板');
+  // 門最後建：全開角度依前面已建好的牆與家具決定
+  const doors = buildDoors(b, collectObstacles(b.root));
+  return { build: b, doors, ...arch };
 }

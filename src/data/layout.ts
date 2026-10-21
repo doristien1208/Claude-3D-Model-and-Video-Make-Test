@@ -97,31 +97,43 @@ export const solidBlocks: readonly Rect[] = [[887, 966, 1045, 1154]];
 /* ---------- 門 ---------- */
 
 /**
- * leaf：參考版門片的實際外框（目前呈現開啟 90°；大門為關閉）。
- * C1 會改為以 hinge／swing／開啟角度參數化，屆時移除 leaf。
+ * 門的開關狀態 open 為 0（關）～1（全開）。
+ * 平開門的「全開」角度由建構時的碰撞檢查決定（門把碰到牆或家具前停住，等同裝門擋）。
  */
 export type Door =
-  | { id: string; kind: 'swing'; opening: string; hinge: 'start' | 'end'; swing: Side;
-      leaf: Rect; leafH: number; material: 'walnut' | 'door'; solid?: boolean; handle?: Rect; handleH?: HRange }
-  | { id: string; kind: 'slide'; opening: string; leaf: Rect; leafH: number; track: Rect; trackH: HRange; handle: Rect; handleH: HRange }
-  | { id: string; kind: 'slideGlass'; opening: string; wallY: number; fixed: readonly [number, number];
-      active: readonly [number, number]; trackEnd: number; h: number };
+  // 平開門（隱框：2 cm 門樘＋5 mm 陰影縫）；hinge 為鉸鏈在開口的哪一端，swing 為往哪一側開；leafT 為門片厚（cm）
+  | { id: string; label: string; kind: 'swing'; opening: string; hinge: 'start' | 'end'; swing: Side; leafT: number;
+      material: 'walnut' | 'door'; open: number; threshold?: boolean }
+  // 外掛拉門：side 為門片所在側，門片離牆 gap、左右各蓋過開口 overlap，開啟時往 slideTo 端滑 travel（皆 px）
+  | { id: string; label: string; kind: 'slide'; opening: string; side: Side; slideTo: 'start' | 'end'; leafT: number;
+      gap: number; overlap: number; travel: number; open: number }
+  // 陽台落地拉門：固定片＋活動片；active 為活動片「全開」時的位置，關閉時滑到 trackEnd
+  | { id: string; label: string; kind: 'slideGlass'; opening: string; wallY: number; fixed: readonly [number, number];
+      active: readonly [number, number]; trackEnd: number; h: number; open: number };
 
 export const doors: readonly Door[] = [
-  { id: 'mbed', kind: 'swing', opening: 'door-mbed', hinge: 'start', swing: 'W', leaf: [420, 487, 485, 491], leafH: 2.1, material: 'walnut' },
-  { id: 'study', kind: 'swing', opening: 'door-study', hinge: 'start', swing: 'W', leaf: [405, 572, 485, 576], leafH: 2.1, material: 'walnut' },
-  { id: 'guest', kind: 'swing', opening: 'door-guest', hinge: 'start', swing: 'W', leaf: [405, 947, 485, 951], leafH: 2.1, material: 'walnut' },
-  { id: 'mbath', kind: 'swing', opening: 'door-mbath', hinge: 'end', swing: 'N', leaf: [476, 220, 480, 296], leafH: 2.1, material: 'walnut' },
-  { id: 'bath', kind: 'swing', opening: 'door-bath', hinge: 'start', swing: 'E', leaf: [604, 941, 679, 945], leafH: 2.1, material: 'walnut' },
-  // 大門：HANDOFF 記載鉸鏈在南端，但參考版門把在南端（y 1258–1262），C1 前待確認
-  { id: 'main', kind: 'swing', opening: 'door-main', hinge: 'end', swing: 'W', leaf: [1038, 1185, 1043, 1275], leafH: 2.15,
-    material: 'door', solid: true, handle: [1035, 1258, 1038, 1262], handleH: [0.95, 1.15] },
-  // 儲藏室外掛拉門：門片在走廊側，開啟時往北滑
-  { id: 'storage', kind: 'slide', opening: 'door-storage', leaf: [591, 1067, 595, 1146], leafH: 2.1,
-    track: [590, 1062, 596, 1226], trackH: [2.1, 2.14], handle: [592, 1075, 595, 1080], handleH: [0.9, 1.1] },
-  // 陽台兩片落地拉門（開啟狀態）
-  { id: 'balcony', kind: 'slideGlass', opening: 'door-balcony', wallY: 260, fixed: [852, 947], active: [862, 957], trackEnd: 1040, h: 2.3 },
+  // 主臥、書房、客房：鉸鏈在開口北端，往房內（西）開
+  { id: 'mbed', label: '主臥', kind: 'swing', opening: 'door-mbed', hinge: 'start', swing: 'W', leafT: 4, material: 'walnut', open: 1 },
+  { id: 'study', label: '書房', kind: 'swing', opening: 'door-study', hinge: 'start', swing: 'W', leafT: 4, material: 'walnut', open: 1 },
+  { id: 'guest', label: '客房', kind: 'swing', opening: 'door-guest', hinge: 'start', swing: 'W', leafT: 4, material: 'walnut', open: 1 },
+  // 主衛浴：鉸鏈在東端，往浴室內（北）開
+  { id: 'mbath', label: '主衛浴', kind: 'swing', opening: 'door-mbath', hinge: 'end', swing: 'N', leafT: 4, material: 'walnut', open: 1, threshold: true },
+  // 公衛：鉸鏈在北端，往浴室內（東）開
+  { id: 'bath', label: '公用衛浴', kind: 'swing', opening: 'door-bath', hinge: 'start', swing: 'E', leafT: 4, material: 'walnut', open: 1, threshold: true },
+  // 大門：鉸鏈在南端，往室內開（2026-10 確認）
+  { id: 'main', label: '大門', kind: 'swing', opening: 'door-main', hinge: 'end', swing: 'W', leafT: 5, material: 'door', open: 0, threshold: true },
+  // 儲藏室外掛拉門：門片在走廊側（x 591–595），開啟時往北滑到 y 1067–1146
+  { id: 'storage', label: '儲藏室', kind: 'slide', opening: 'door-storage', side: 'W', slideTo: 'start', leafT: 4, gap: 1, overlap: 2, travel: 76, open: 1 },
+  // 陽台兩片落地拉門：固定片 x 852–947，活動片全開時 x 862–957
+  { id: 'balcony', label: '陽台', kind: 'slideGlass', opening: 'door-balcony', wallY: 260, fixed: [852, 947], active: [862, 957], trackEnd: 1040, h: 2.3, open: 1 },
 ];
+
+/* ---------- 收邊 ---------- */
+
+export const finishes = {
+  /** 踢腳板：高 h（m）、厚 t（px）；衛浴（牆面已貼石材）與陽台不做 */
+  baseboard: { h: 0.06, t: 1, excludeSpaces: ['mbath', 'bath', 'balcony'] as readonly string[] },
+};
 
 /* ---------- 空間 ---------- */
 

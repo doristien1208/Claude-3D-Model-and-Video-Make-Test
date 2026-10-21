@@ -11,6 +11,7 @@
     "verify:prep": "node tools/verify/instrument-ref.mjs"
   },
   "dependencies": {
+    "lil-gui": "^0.21.0",
     "three": "^0.186.1"
   },
   "devDependencies": {

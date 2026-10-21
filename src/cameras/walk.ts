@@ -69,11 +69,19 @@ export class WalkController {
     s.pitch = v.pitch ?? -0.08;
   }
 
-  /** 世界座標 (x, z) 是否被牆或家具擋住 */
-  blocked(x: number, z: number): boolean {
+  /** 會變動的碰撞方塊（例如門片），每次檢查時重新讀取 */
+  dynamicSolids: readonly Solid[] = [];
+
+  /**
+   * 世界座標 (x, z) 是否被牆、家具或門片擋住。
+   * from 為目前位置：已經和某個方塊重疊（例如剛好站在門扇轉過來的位置）時忽略那個方塊，讓人走得出來。
+   */
+  blocked(x: number, z: number, from?: { x: number; z: number }): boolean {
     const [bx0, bz0, bx1, bz1] = this.bounds;
     if (x < bx0 + R || z < bz0 + R || x > bx1 - R || z > bz1 - R) return true;
-    for (const s of this.solids) if (x > s[0] - R && x < s[2] + R && z > s[1] - R && z < s[3] + R) return true;
+    const hits = (s: Solid, px: number, pz: number) => px > s[0] - R && px < s[2] + R && pz > s[1] - R && pz < s[3] + R;
+    for (const s of this.solids) if (hits(s, x, z)) return true;
+    for (const s of this.dynamicSolids) if (hits(s, x, z) && !(from && hits(s, from.x, from.z))) return true;
     return false;
   }
 
@@ -90,8 +98,8 @@ export class WalkController {
     if (l > 1) { f /= l; side /= l; }
     const fx = -Math.sin(s.yaw), fz = -Math.cos(s.yaw), rx = Math.cos(s.yaw), rz = -Math.sin(s.yaw);
     const dx = (fx * f + rx * side) * sp, dz = (fz * f + rz * side) * sp;
-    if (!this.blocked(s.x + dx, s.z)) s.x += dx;
-    if (!this.blocked(s.x, s.z + dz)) s.z += dz;
+    if (!this.blocked(s.x + dx, s.z, s)) s.x += dx;
+    if (!this.blocked(s.x, s.z + dz, s)) s.z += dz;
     this.camera.position.set(s.x, EYE, s.z);
     this.camera.rotation.set(s.pitch, s.yaw, 0, 'YXZ');
   }

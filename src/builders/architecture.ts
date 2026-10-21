@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CEILING_H as H, doors, floorZones, lighting, site, solidBlocks, wallTiles, walls, type Door, type Wall } from '../data/layout';
+import { CEILING_H as H, floorZones, lighting, site, solidBlocks, wallTiles, walls, type Wall } from '../data/layout';
 import { isHorizontal } from '../data/query';
 import type { Build } from './prims';
 
@@ -10,10 +10,10 @@ function buildWall(b: Build, w: Wall): void {
   const [x1, y1] = w.a, [x2, y2] = w.b;
   const s0 = Math.min(hor ? x1 : y1, hor ? x2 : y2) - t / 2, e0 = Math.max(hor ? x1 : y1, hor ? x2 : y2) + t / 2;
   const c = hor ? y1 : x1;
-  // 沿牆方向的一段實牆；兩端各多 0.6 px，避免接縫漏光
-  const seg = (a: number, e: number, h0: number, h1: number) => {
+  // 沿牆方向的一段實牆；兩端各多 0.6 px，避免接縫漏光。門洞邊不外伸，讓門樘旁的陰影縫露出來
+  const seg = (a: number, e: number, h0: number, h1: number, padA = 0.6, padE = 0.6) => {
     if (e - a < 0.5) return;
-    a -= 0.6; e += 0.6;
+    a -= padA; e += padE;
     const solid = h0 < 0.3;
     if (hor) b.bx(a, c - t / 2, e, c + t / 2, h0, h1, mat.wall, { solid });
     else b.bx(c - t / 2, a, c + t / 2, e, h0, h1, mat.wall, { solid });
@@ -23,9 +23,11 @@ function buildWall(b: Build, w: Wall): void {
   const along = (s: number, e: number, d: number, h0: number, h1: number, m: THREE.Material, cast?: boolean) =>
     hor ? b.bx(s, c - d / 2, e, c + d / 2, h0, h1, m, { cast }) : b.bx(c - d / 2, s, c + d / 2, e, h0, h1, m, { cast });
 
-  let cur = s0;
+  let cur = s0, curPad = 0.6;
   for (const o of [...(w.openings ?? [])].sort((p, q) => p.s - q.s)) {
-    seg(cur, o.s, 0, H);
+    const pad = o.kind === 'door' ? 0 : 0.6;
+    seg(cur, o.s, 0, H, curPad, pad);
+    curPad = pad;
     if (o.bot > 0) seg(o.s, o.e, 0, o.bot);
     if (o.top < H) seg(o.s, o.e, o.top, H);
     if (o.kind === 'window') {
@@ -45,36 +47,7 @@ function buildWall(b: Build, w: Wall): void {
     }
     cur = o.e;
   }
-  seg(cur, e0, 0, H);
-}
-
-/* ---------- 門（參考版的固定開啟狀態） ---------- */
-function buildDoor(b: Build, d: Door): void {
-  const { mat } = b;
-  switch (d.kind) {
-    case 'swing':
-      b.box(d.leaf, 0, d.leafH, mat[d.material], { solid: d.solid });
-      if (d.handle && d.handleH) b.box(d.handle, d.handleH[0], d.handleH[1], mat.black);
-      break;
-    case 'slide':
-      b.box(d.leaf, 0, d.leafH, mat.walnut, { solid: true });
-      b.box(d.track, d.trackH[0], d.trackH[1], mat.black);
-      b.box(d.handle, d.handleH[0], d.handleH[1], mat.black);
-      break;
-    case 'slideGlass': {
-      // 固定片在牆中心 ±2 px，活動片在室內側 +3–7 px；兩片各有 4 px 邊框
-      const c = d.wallY, h = d.h;
-      b.bx(d.fixed[0], c - 2, d.fixed[1], c + 2, 0, h, mat.glass, { cast: false, solid: true });
-      b.bx(d.active[0], c + 3, d.active[1], c + 7, 0, h, mat.glass, { cast: false });
-      for (const [s, e, y0, y1] of [
-        [d.fixed[0], d.fixed[0] + 4, c - 2, c + 2], [d.fixed[1] - 4, d.fixed[1], c - 2, c + 2],
-        [d.active[0], d.active[0] + 4, c + 3, c + 7], [d.active[1] - 4, d.active[1], c + 3, c + 7],
-      ]) b.bx(s, y0, e, y1, 0, h, mat.black);
-      b.bx(d.fixed[0], c - 2, d.trackEnd, c + 7, h - 0.03, h, mat.black);
-      b.bx(d.fixed[0], c - 2, d.trackEnd, c + 7, 0, 0.03, mat.black);
-      break;
-    }
-  }
+  seg(cur, e0, 0, H, curPad, 0.6);
 }
 
 export interface Architecture {
@@ -103,8 +76,6 @@ export function buildArchitecture(b: Build): Architecture {
 
   /* 衛浴牆面石材 */
   for (const s of wallTiles) b.box(s.rect, s.h[0], s.h[1], mat.tileLight, { cast: false });
-
-  for (const d of doors) buildDoor(b, d);
 
   /* 天花板間接光 */
   for (const cv of lighting.coves) b.glowBox(cv.rect[0], cv.rect[1], cv.rect[2], cv.rect[3], cv.h[0], cv.h[1]);

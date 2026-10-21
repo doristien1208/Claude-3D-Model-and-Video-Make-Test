@@ -30,5 +30,9 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
   border-radius:12px;padding:8px;cursor:crosshair;display:none}
 #map canvas{display:block}
 #map span{display:block;font-size:11px;color:var(--ink-dim);margin-top:5px;text-align:center}
+.lil-gui.panel{position:fixed;left:14px;top:96px;--background-color:var(--panel);--title-background-color:rgba(239,230,218,.06);
+  --text-color:var(--ink);--title-text-color:var(--ink);--number-color:var(--brass);--focus-color:rgba(239,230,218,.16);
+  --widget-color:rgba(239,230,218,.1);--hover-color:rgba(239,230,218,.16);--font-family:inherit;--font-size:12px;
+  border:1px solid var(--panel-line);border-radius:10px;overflow:hidden}
 #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;font-size:15px;color:var(--ink-dim)}
 @media (prefers-reduced-motion: reduce){ *{transition:none!important} }

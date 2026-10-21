@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-- `http://localhost:5173/`：模型本體（俯瞰／漫遊、日夜、剖切、房間跳轉、小地圖）
+- `http://localhost:5173/`：模型本體（俯瞰／漫遊、日夜、剖切、房間跳轉、小地圖；左側參數面板可開關各扇門）
 - `http://localhost:5173/compare.html`：參考版與新版並排對照（鏡頭同步，也可切換 A/B 疊圖）
 - `http://localhost:5173/tools/verify/harness.html`：自動比對幾何與像素。執行前先跑 `npm run verify:prep`，產生加了匯出功能的參考版副本
 

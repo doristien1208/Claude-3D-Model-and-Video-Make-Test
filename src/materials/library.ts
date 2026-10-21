@@ -83,6 +83,8 @@ export function createMaterials(tex: TextureLibrary) {
     wetFloor: M({ color: 0x2b2826, roughness: 0.4 }),
     sinkMetal: M({ color: 0x161515, roughness: 0.3, metalness: 0.6 }),
     ceramicBeige: M({ color: 0xc9b9a0, roughness: 0.6 }),
+    // 門樘陰影縫、嵌入式取手的凹槽
+    gap: M({ color: 0x1a1715, roughness: 0.9 }),
   };
   for (const [k, m] of Object.entries(mat)) m.name = k;
 
