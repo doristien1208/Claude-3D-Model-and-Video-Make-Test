@@ -64,9 +64,10 @@ export class EnvProbes {
   constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, root: THREE.Object3D, exclude: ReadonlySet<THREE.Material>) {
     this.scene = scene;
     this.pmrem = new THREE.PMREMGenerator(renderer);
-    this.zones = probeZones.map(({ id, rect: [x1, y1, x2, y2] }) => {
+    this.zones = probeZones.map(({ id, rect: [x1, y1, x2, y2], probe }) => {
       const box = new THREE.Box3(new THREE.Vector3(X(x1), 0, Z(y1)), new THREE.Vector3(X(x2), CEILING_H, Z(y2)));
-      return { id, box, probe: new THREE.Vector3(X((x1 + x2) / 2), EYE, Z((y1 + y2) / 2)), materials: [], cache: new Map() };
+      const [px, py] = probe ?? [(x1 + x2) / 2, (y1 + y2) / 2];
+      return { id, box, probe: new THREE.Vector3(X(px), EYE, Z(py)), materials: [], cache: new Map() };
     });
 
     // 依物件中心決定屬於哪一區（不在任何區內就取最近的一區），每區複製一份材質

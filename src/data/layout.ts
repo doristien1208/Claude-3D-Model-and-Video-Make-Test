@@ -273,14 +273,32 @@ export type Item =
   // 雙層蛇形簾（紗簾＋布簾）掛在窗簾盒內；sides 為收在哪一側，bottom 為下緣高度（預設落地，離地 1 cm）
   // span 為窗簾實際使用的軌道範圍（預設為整個窗簾盒）
   | { id: string; type: 'curtains'; label: string; window: string; sides: 'both' | 'start' | 'end'; bottom?: number; span?: readonly [number, number] }
-  | { id: string; type: 'bathtub'; rect: Rect }
-  | { id: string; type: 'showerValve'; at: Pt }
-  | { id: string; type: 'showerHead'; head: Pt; from: Pt; r: number }
+  // 嵌入式浴缸：rect 為缸體外緣，surround 為石材包覆（補到牆面），h 為缸緣高；foot 為腳端（排水、出水口）方向
+  | { id: string; type: 'bathtub'; rect: Rect; surround: Rect; h: number; foot: Side }
+  // 牆面設備：at 為牆面上的點，facing 為朝向，h 為中心高
+  | { id: string; type: 'bathSpout'; at: Pt; facing: Side; h: number }
+  // 恆溫面板；hand 為手持花灑掛座（同一面牆）
+  | { id: string; type: 'showerValve'; at: Pt; facing: Side; h: number; hand: { at: Pt; h: number } }
+  // 方形頂噴：壁掛橫臂從 from（牆面）到 head；size 為邊長（m），h 為頂噴下緣高
+  | { id: string; type: 'showerHead'; head: Pt; from: Pt; size: number; h: number }
+  // 線型排水溝：h 為地坪面高
+  | { id: string; type: 'linearDrain'; rect: Rect; h: number }
   | { id: string; type: 'wallShelf'; rect: Rect; levels: readonly number[] }
-  | { id: string; type: 'glassScreen'; rect: Rect; h: number; frame: 'full' | 'top' }
-  | { id: string; type: 'toilet'; tank: Rect; tankH: HRange; bowl: Rect }
-  | { id: string; type: 'vanity'; rect: Rect; basin: Rect; faucet: Rect; faucetTop: number; mirror: Rect; mirrorH: HRange }
-  | { id: string; type: 'towelBar'; rect: Rect; h: HRange }
+  // 固定玻璃隔屏（10 mm）：牆側在 rect 的較小座標端，自由端在較大座標端；base 為玻璃下緣高
+  | { id: string; type: 'glassScreen'; rect: Rect; h: number; base: number }
+  // 壁掛馬桶：tank 為隱藏水箱半牆，bowl 為馬桶平面外框，facing 為馬桶朝向
+  | { id: string; type: 'toilet'; tank: Rect; tankH: HRange; tankMaterial: 'walnut' | 'tile'; bowl: Rect; facing: Side }
+  // 懸浮洗手台：櫃體 0.5 m 起、石材檯面 0.85 m；basin 為面盆外框；faucet 為檯面龍頭或入牆龍頭（h 為出水管中心高）
+  | { id: string; type: 'vanity'; rect: Rect; front: Side; fronts: readonly Front[]; basin: Rect; basinType: 'vessel' | 'undermount';
+      faucet: { at: Pt; mount: 'deck' } | { at: Pt; mount: 'wall'; h: number }; mirror: Rect; mirrorH: HRange }
+  // 毛巾桿：at 為牆面上桿子中點，len 為長度（px）；towels 為掛在桿上的毛巾（同一位置先列的在內層）
+  | { id: string; type: 'towelBar'; at: Pt; facing: Side; len: number; h: number; towels?: readonly TowelHang[] }
+  // 捲起的毛巾（三捲疊成金字塔）：axis 為捲軸方向
+  | { id: string; type: 'towelRolls'; at: Pt; h: number; kind: TowelKind; axis: 'x' | 'y'; color: TowelColor }
+  | { id: string; type: 'paperHolder'; at: Pt; facing: Side; h: number }
+  // 托盤與小物：at 為中心，h 為放置面高
+  | { id: string; type: 'tray'; rect: Rect; h: number }
+  | { id: string; type: 'bathAccessory'; kind: 'pumpBottle' | 'tumbler' | 'succulent' | 'candle'; at: Pt; h: number }
   | { id: string; type: 'desk'; rect: Rect }
   | { id: string; type: 'monitor'; rect: Rect }
   | { id: string; type: 'officeChair'; at: Pt }
@@ -327,6 +345,18 @@ export interface Front {
   led?: boolean;
 }
 
+/**
+ * 毛巾（尺寸依調查：MUJI、Costco 飯店浴巾 700 × 1400、毛巾 340 × 800）：
+ * 浴巾縱向三折後對折掛（寬 233、垂 700），毛巾縱向對折後對折掛（寬 170、垂 400）；at 為沿桿子離中點的位置（px）。
+ */
+export type TowelKind = 'bath' | 'hand';
+export type TowelColor = 'white' | 'oat';
+export interface TowelHang {
+  kind: TowelKind;
+  at: number;
+  color: TowelColor;
+}
+
 export type ItemType = Item['type'];
 
 export const items: readonly Item[] = [
@@ -345,16 +375,43 @@ export const items: readonly Item[] = [
   { id: 'mbed-rug', type: 'rug', rect: [110, 370, 345, 556], material: 'rug2' },
   { id: 'mbed-curtains', type: 'curtains', label: '主臥', window: 'win-mbed', sides: 'both' },
 
-  /* 主衛浴：西側濕區（浴缸＋淋浴）｜玻璃隔屏｜東側乾區（馬桶、洗手台） */
-  { id: 'mbath-tub', type: 'bathtub', rect: [80, 135, 250, 210] },
-  { id: 'mbath-valve', type: 'showerValve', at: [77, 256] },
-  { id: 'mbath-head', type: 'showerHead', head: [110, 256], from: [77, 256], r: 0.12 },
+  /* 主衛浴：西側濕區（浴缸＋淋浴）｜玻璃隔屏｜東側乾區（馬桶、洗手台）。設備依調查（2026-10 確認） */
+  // 嵌入式壓克力浴缸 1700 × 750（缸體參考 Duravit Starck 嵌入式），石材包覆到牆面；靠背在東、腳端在西；不放水
+  { id: 'mbath-tub', type: 'bathtub', rect: [80, 135, 250, 210], surround: [76, 131, 252, 212], h: 0.56, foot: 'W' },
+  // 入牆出水口（hansgrohe Tecturis E，出水 210）
+  { id: 'mbath-spout', type: 'bathSpout', at: [77, 172.5], facing: 'E', h: 0.7 },
+  // 入牆恆溫面板（hansgrohe ShowerSelect Comfort E，155 × 155）＋手持花灑掛座
+  { id: 'mbath-valve', type: 'showerValve', at: [77, 256], facing: 'E', h: 1.1, hand: { at: [77, 232], h: 1.22 } },
+  // 方形頂噴（hansgrohe Pulsify E 260），壁掛橫臂，下緣 2.2 m（Ronal 建議 2.1–2.2 m）
+  { id: 'mbath-head', type: 'showerHead', head: [110, 256], from: [77, 256], size: 0.26, h: 2.2 },
+  // 線型排水溝（Geberit CleanLine20，可見寬 43 mm）
+  { id: 'mbath-drain', type: 'linearDrain', rect: [78, 216, 82.3, 291], h: 0.012 },
   { id: 'mbath-towel-shelf', type: 'wallShelf', rect: [77, 280, 92, 294], levels: [1.25, 0.9] },
-  { id: 'mbath-screen', type: 'glassScreen', rect: [258, 131, 261, 225], h: 2.1, frame: 'full' },
-  { id: 'mbath-wc', type: 'toilet', tank: [280, 131, 336, 149], tankH: [0, 1.1], bowl: [292, 149, 324, 203] },
-  { id: 'mbath-vanity', type: 'vanity', rect: [350, 131.5, 470, 180], basin: [390, 140, 430, 172], faucet: [406, 132, 414, 140],
-    faucetTop: 1.12, mirror: [350, 131.5, 470, 133], mirrorH: [1.05, 1.95] },
-  { id: 'mbath-towel-bar', type: 'towelBar', rect: [482, 190, 485, 250], h: [1.0, 1.03] },
+  { id: 'mbath-shampoo', type: 'bathAccessory', kind: 'pumpBottle', at: [84.5, 287], h: 1.27 },
+  { id: 'mbath-bodywash', type: 'bathAccessory', kind: 'pumpBottle', at: [84.5, 287], h: 0.92 },
+  { id: 'mbath-candle', type: 'bathAccessory', kind: 'candle', at: [236, 139], h: 0.56 },
+  // 10 mm 超白玻璃：上框＋外側立框 20 mm、牆側 15 × 15 U 槽，不做下框
+  { id: 'mbath-screen', type: 'glassScreen', rect: [259, 131, 260, 225], h: 2.1, base: 0.006 },
+  // 壁掛無邊圈馬桶（TOTO CW822REATW：380 × 540 × 335）、胡桃木水箱半牆、霧黑沖水板
+  { id: 'mbath-wc', type: 'toilet', tank: [280, 131, 336, 149], tankH: [0, 1.1], tankMaterial: 'walnut', bowl: [289, 149, 327, 203], facing: 'S' },
+  { id: 'mbath-rolls', type: 'towelRolls', at: [308, 140], h: 1.1, kind: 'hand', axis: 'y', color: 'white' },
+  // 馬桶兩側沒有牆：衛生紙架裝在洗手台西側板（高 0.66 m）
+  { id: 'mbath-paper', type: 'paperHolder', at: [350, 172], facing: 'W', h: 0.66 },
+  // 桌上型薄邊方盆 550 × 380 × 100（參考 TOTO LW1735、凱撒 LF5342）＋檯面高腳龍頭（hansgrohe Talis E 240）
+  { id: 'mbath-vanity', type: 'vanity', rect: [350, 131.5, 470, 180], front: 'S',
+    fronts: [{ from: 350, to: 470, h: [0.5, 0.83], n: 2, kind: 'drawer', handle: 'push' }],
+    basin: [382.5, 140.5, 437.5, 178.5], basinType: 'vessel', faucet: { at: [410, 136.5], mount: 'deck' },
+    mirror: [350, 131.5, 470, 133], mirrorH: [1.05, 1.95] },
+  { id: 'mbath-tray', type: 'tray', rect: [449, 143, 462, 171], h: 0.85 },
+  { id: 'mbath-soap', type: 'bathAccessory', kind: 'pumpBottle', at: [455.5, 149], h: 0.865 },
+  { id: 'mbath-cup', type: 'bathAccessory', kind: 'tumbler', at: [455.5, 158.5], h: 0.865 },
+  { id: 'mbath-succulent', type: 'bathAccessory', kind: 'succulent', at: [455.5, 166.5], h: 0.865 },
+  // 60 cm 毛巾桿 1.2 m：兩條白浴巾＋兩條燕麥色毛巾疊掛。原本在東牆（y 190–250），正好在門片開啟的位置
+  // （門只能開到 80.75° 且會擋住毛巾），移到南牆淋浴出口旁
+  { id: 'mbath-towel-bar', type: 'towelBar', at: [305, 294.5], facing: 'N', len: 60, h: 1.2, towels: [
+    { kind: 'bath', at: -12, color: 'white' }, { kind: 'bath', at: 12, color: 'white' },
+    { kind: 'hand', at: -12, color: 'oat' }, { kind: 'hand', at: 12, color: 'oat' },
+  ] },
 
   /* 書房 */
   { id: 'study-low-shelf', type: 'shelf', rect: [76, 625, 115, 825], h: 1.0, shelves: 2, back: 'W', seed: 31 },
@@ -438,11 +495,21 @@ export const items: readonly Item[] = [
   { id: 'mbed-door-plant', type: 'plant', at: [510, 455], potR: 0.17, potH: 0.42, leafR: 0.3, leafSY: 1.6, leafY: 0.9 },
 
   /* 公用衛浴與儲藏室 */
-  { id: 'bath-vanity', type: 'vanity', rect: [609, 894.5, 670, 940], basin: [620, 900, 660, 934], faucet: [637, 895, 643, 902],
-    faucetTop: 1.1, mirror: [610, 894.5, 670, 896], mirrorH: [1.05, 1.9] },
-  { id: 'bath-wc', type: 'toilet', tank: [709, 894.5, 749, 900], tankH: [0.15, 1.1], bowl: [713, 900, 745, 950] },
-  { id: 'bath-screen', type: 'glassScreen', rect: [605, 1033, 715, 1035], h: 2.0, frame: 'top' },
-  { id: 'bath-head', type: 'showerHead', head: [725, 1110], from: [725, 1131], r: 0.1 },
+  // 61 cm 洗手台檯面太淺放不下檯面龍頭：下嵌盆 460 × 390（凱撒 L5115）＋入牆龍頭（hansgrohe Talis E 壁式，出水 225）
+  { id: 'bath-vanity', type: 'vanity', rect: [609, 894.5, 670, 940], front: 'S',
+    fronts: [{ from: 609, to: 670, h: [0.5, 0.83], n: 1, kind: 'door', handle: 'push' }],
+    basin: [616.5, 897.5, 662.5, 936.5], basinType: 'undermount', faucet: { at: [639.5, 894.5], mount: 'wall', h: 0.99 },
+    mirror: [610, 894.5, 670, 896], mirrorH: [1.05, 1.9] },
+  { id: 'bath-soap', type: 'bathAccessory', kind: 'pumpBottle', at: [665, 905], h: 0.85 },
+  // 洗手台旁西牆只有 46 cm 又被門切斷，毛巾桿改裝在鏡子與水箱半牆之間的北牆（30 cm）
+  { id: 'bath-towel-bar', type: 'towelBar', at: [689.5, 894.5], facing: 'S', len: 30, h: 1.2, towels: [{ kind: 'hand', at: 0, color: 'oat' }] },
+  // 隱藏水箱半牆：薄型框架（Geberit Duofix 8 cm 水箱）＋磁磚共 11 cm，馬桶南移 4.5 cm（2026-10 確認）
+  { id: 'bath-wc', type: 'toilet', tank: [709, 894.5, 749, 904.5], tankH: [0, 1.1], tankMaterial: 'tile', bowl: [710, 904.5, 748, 958.5], facing: 'S' },
+  { id: 'bath-paper', type: 'paperHolder', at: [770, 980], facing: 'W', h: 0.66 },
+  { id: 'bath-screen', type: 'glassScreen', rect: [605, 1034, 715, 1035], h: 2.0, base: 0.03 },
+  { id: 'bath-valve', type: 'showerValve', at: [725, 1130], facing: 'N', h: 1.1, hand: { at: [748, 1130], h: 1.22 } },
+  { id: 'bath-head', type: 'showerHead', head: [725, 1110], from: [725, 1130], size: 0.26, h: 2.2 },
+  { id: 'bath-drain', type: 'linearDrain', rect: [643, 1124.5, 733, 1128.8], h: 0.03 },
   { id: 'storage-shelf', type: 'shelf', rect: [712, 1149, 758, 1266], h: 2.2, shelves: 5, back: 'E', seed: 51 },
   { id: 'storage-box-1', type: 'storageBox', rect: [654, 1220, 702, 1246], h: 0.3 },
   { id: 'storage-box-2', type: 'storageBox', rect: [656, 1250, 701, 1271], h: 0.25 },
@@ -528,11 +595,13 @@ export const coves: readonly Cove[] = [
 /**
  * 每區在中央 1.4 m 高從模型本身拍一張 360° 反射圖（PMREM），區內的物件用它當環境反射，
  * 並以區域外框做箱型投影修正。開放式客餐廚合成一區；外框以室內牆面為界（px）。
+ * probe 可指定拍攝位置：箱型投影假設環境都在外框牆面上，探針太靠近物件時，物件會被投影成一大塊（例如玻璃隔屏上映出馬桶的暗影）。
  */
-export const probeZones: readonly { id: string; rect: Rect }[] = [
+export const probeZones: readonly { id: string; rect: Rect; probe?: Pt }[] = [
   { id: 'great', rect: [495.5, 131, 1039, 884.5] },
   { id: 'balcony', rect: [839, 124, 1039, 256] },
-  { id: 'mbath', rect: [76, 131, 484.5, 295.5] },
+  // 區域中心離馬桶只有 10 cm，改到乾區中央
+  { id: 'mbath', rect: [76, 131, 484.5, 295.5], probe: [420, 240] },
   { id: 'mbed', rect: [76, 304.5, 484.5, 560] },
   { id: 'study', rect: [76, 570, 484.5, 935] },
   { id: 'guest', rect: [76, 945, 484.5, 1274] },

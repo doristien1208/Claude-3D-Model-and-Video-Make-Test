@@ -1,6 +1,7 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { X, Z } from '../core/units';
-import type { Rect } from '../data/layout';
+import type { Rect, Side } from '../data/layout';
 import type { Materials } from '../materials/library';
 import type { CurtainCtl } from './curtains';
 
@@ -41,6 +42,20 @@ export function worldUV(g: THREE.BufferGeometry, o: THREE.Vector3, r?: number): 
   uv.needsUpdate = true;
 }
 
+/** 牆面設備朝向 → 本地 z 軸（離牆方向）在世界座標的旋轉角 */
+export const FACING_YAW: Record<Side, number> = { S: 0, N: Math.PI, E: Math.PI / 2, W: -Math.PI / 2 };
+
+/** 在群組本地座標（公尺）放一個方塊；r > 0 為圓角 */
+export function gbox(g: THREE.Object3D, w: number, h: number, d: number, x: number, y: number, z: number, m: THREE.Material, r = 0, cast = true): THREE.Mesh {
+  const geo = r > 0 ? new RoundedBoxGeometry(w, h, d, 2, r) : new THREE.BoxGeometry(w, h, d);
+  const me = new THREE.Mesh(geo, m);
+  me.position.set(x, y, z);
+  me.castShadow = cast;
+  me.receiveShadow = true;
+  g.add(me);
+  return me;
+}
+
 /** 建構期間共用的狀態與幾何工具（輸入為 SVG px，高度為公尺） */
 export class Build {
   readonly root = new THREE.Group();
@@ -54,6 +69,8 @@ export class Build {
   readonly reflectors: THREE.Object3D[] = [];
   /** 夜間才開的面光源（洗簾燈等）與夜間強度 */
   readonly areaLights: { light: THREE.RectAreaLight; intensity: number }[] = [];
+  /** 霧面玻璃與窗戶朝外的方向（世界座標），亮度依窗外 HDRI 設定 */
+  readonly frosted: { mesh: THREE.Mesh; out: THREE.Vector3 }[] = [];
   readonly mat: Materials['mat'];
   readonly books: Materials['books'];
 

@@ -50,12 +50,19 @@ function windowUnit(b: Build, spec: WindowSpec, ceiling: THREE.Group): void {
   const { mat } = b;
   const f = winFrame(spec.opening);
   const { s, e, bot, top, ce, ci, σ } = f;
-  const glass = spec.frosted ? mat.frosted : mat.glass;
+  // 霧面玻璃每扇窗一份材質（發光亮度依窗戶朝向不同）
+  const glass = spec.frosted ? mat.frosted.clone() : mat.glass;
+  const out = f.hor ? new THREE.Vector3(0, 0, -σ) : new THREE.Vector3(-σ, 0, 0);
   // across 以「離外框外側的深度」表示：0 = 外框外緣，DEPTH = 外框內緣
   const k = (d: number) => ce + σ * (SETBACK + d);
   const B = (a0: number, a1: number, d0: number, d1: number, h0: number, h1: number, m: THREE.Material, opt?: BoxOpt) =>
     b.box(rectAlong(f.hor, a0, a1, k(d0), k(d1)), h0, h1, m, opt);
   const m = (v: number) => v / 100; // px → m（高度方向）
+  /** 玻璃片（在深度 dc 中央） */
+  const pane = (a0: number, a1: number, dc: number, h0: number, h1: number) => {
+    const me = B(a0, a1, dc - GLASS / 2, dc + GLASS / 2, h0, h1, glass, { cast: false });
+    if (spec.frosted) b.frosted.push({ mesh: me, out });
+  };
 
   /* 外框 */
   const fr = spec.type === 'fixed' ? { side: 2.5, head: 2.5, sill: 3.0 } : FRAME;
@@ -72,7 +79,7 @@ function windowUnit(b: Build, spec: WindowSpec, ceiling: THREE.Group): void {
     B(x0, x0 + bead, d0, d1, y0 + m(bead), y1 - m(bead), mat.alu);
     B(x1 - bead, x1, d0, d1, y0 + m(bead), y1 - m(bead), mat.alu);
     const dc = (d0 + d1) / 2;
-    B(x0 + bead, x1 - bead, dc - GLASS / 2, dc + GLASS / 2, y0 + m(bead), y1 - m(bead), glass, { cast: false });
+    pane(x0 + bead, x1 - bead, dc, y0 + m(bead), y1 - m(bead));
   };
   /** 橫拉扇：dIn 為扇的深度位置（靠室內或靠室外軌道）；lockAt 為鎖的位置（along） */
   const slideSash = (x0: number, x1: number, y0: number, y1: number, d0: number, meetAtStart: boolean, lockAt?: number) => {
@@ -82,7 +89,7 @@ function windowUnit(b: Build, spec: WindowSpec, ceiling: THREE.Group): void {
     B(x0, x1, d0, d1, y1 - m(SLIDE.top), y1, mat.alu);
     B(x0, x0 + sw0, d0, d1, y0 + m(SLIDE.bottom), y1 - m(SLIDE.top), mat.alu);
     B(x1 - sw1, x1, d0, d1, y0 + m(SLIDE.bottom), y1 - m(SLIDE.top), mat.alu);
-    B(x0 + sw0, x1 - sw1, dc - GLASS / 2, dc + GLASS / 2, y0 + m(SLIDE.bottom), y1 - m(SLIDE.top), glass, { cast: false });
+    pane(x0 + sw0, x1 - sw1, dc, y0 + m(SLIDE.bottom), y1 - m(SLIDE.top));
     if (lockAt !== undefined) {
       // 月牙鎖／把手：扇框室內面、扇高中段
       const ym = (y0 + y1) / 2;
@@ -117,7 +124,7 @@ function windowUnit(b: Build, spec: WindowSpec, ceiling: THREE.Group): void {
       B(a0, a1, d0, d1, h1 - m(AWNING.top), h1, mat.alu);
       B(a0, a0 + AWNING.side, d0, d1, h0 + m(AWNING.bottom), h1 - m(AWNING.top), mat.alu);
       B(a1 - AWNING.side, a1, d0, d1, h0 + m(AWNING.bottom), h1 - m(AWNING.top), mat.alu);
-      B(a0 + AWNING.side, a1 - AWNING.side, dc - GLASS / 2, dc + GLASS / 2, h0 + m(AWNING.bottom), h1 - m(AWNING.top), glass, { cast: false });
+      pane(a0 + AWNING.side, a1 - AWNING.side, dc, h0 + m(AWNING.bottom), h1 - m(AWNING.top));
       const am = (a0 + a1) / 2;
       B(am - 6, am + 6, d1, d1 + 2, h0 + 0.012, h0 + 0.03, mat.blackSatin);
       break;

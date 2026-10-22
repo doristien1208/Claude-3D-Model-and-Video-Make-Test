@@ -2,6 +2,7 @@ import { items, lighting, type Item, type ItemType } from '../data/layout';
 import type { ItemOf } from '../data/query';
 import type { Materials } from '../materials/library';
 import { buildArchitecture, type Architecture } from './architecture';
+import * as bath from './bath';
 import { curtains } from './curtains';
 import * as decor from './decor';
 import { buildDoors, collectObstacles, type Doors } from './doors';
@@ -35,13 +36,19 @@ const registry: { [T in ItemType]: Builder<T> } = {
   coffeeTable: furniture.coffeeTable,
   armchair: furniture.armchair,
   barStool: furniture.barStool,
-  bathtub: fixtures.bathtub,
-  showerValve: fixtures.showerValve,
-  showerHead: fixtures.showerHead,
-  glassScreen: fixtures.glassScreen,
-  toilet: fixtures.toilet,
-  vanity: fixtures.vanity,
-  towelBar: fixtures.towelBar,
+  bathtub: bath.bathtub,
+  bathSpout: bath.bathSpout,
+  showerValve: bath.showerValve,
+  showerHead: bath.showerHead,
+  linearDrain: bath.linearDrain,
+  glassScreen: bath.glassScreen,
+  toilet: bath.toilet,
+  vanity: bath.vanity,
+  towelBar: bath.towelBar,
+  towelRolls: bath.towelRolls,
+  paperHolder: bath.paperHolder,
+  tray: bath.tray,
+  bathAccessory: bath.bathAccessory,
   wallLamp: fixtures.wallLamp,
   deskLamp: fixtures.deskLamp,
   floorLamp: fixtures.floorLamp,

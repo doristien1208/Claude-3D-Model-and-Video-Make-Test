@@ -12,7 +12,7 @@ import { rectAlong, rng, worldUV, type Build } from './prims';
  */
 const DOOR = 1.8;       // 門片厚（px）
 const GAP = 0.3;        // 門縫（px）＝ 0.003 m
-const BOARD = 1.8;      // 櫃體板厚（px）
+export const BOARD = 1.8;      // 櫃體板厚（px）
 const GOLA = 0.035;     // 取手溝高（m）
 const PLINTH_SET = 5;   // 踢腳內縮（px）
 const BAY_MAX = 80;     // 書櫃每格最大跨距（px）
@@ -30,14 +30,14 @@ export function headboardPanel(b: Build, it: ItemOf<'headboardPanel'>): void {
 /* ---------- 櫃體正面 ---------- */
 
 /** 櫃體正面的局部座標：along 沿正面，depth 由正面往內（0 = 門片外表面） */
-interface FrontFrame {
+export interface FrontFrame {
   hor: boolean;
   face: number;   // 正面（門片外表面）的 across 座標
   back: number;   // 背面的 across 座標
   σ: 1 | -1;      // 正面朝外的方向
 }
 
-function frameOf(rect: Rect, front: Side): FrontFrame {
+export function frameOf(rect: Rect, front: Side): FrontFrame {
   const [x1, y1, x2, y2] = rect;
   switch (front) {
     case 'N': return { hor: true, face: y1, back: y2, σ: -1 };
@@ -48,7 +48,7 @@ function frameOf(rect: Rect, front: Side): FrontFrame {
 }
 
 /** 正面座標 → 平面外框：沿正面 a0–a1、由正面往內 d0–d1 */
-const R = (f: FrontFrame, a0: number, a1: number, d0: number, d1: number): Rect =>
+export const R = (f: FrontFrame, a0: number, a1: number, d0: number, d1: number): Rect =>
   rectAlong(f.hor, a0, a1, f.face - f.σ * d0, f.face - f.σ * d1);
 
 /** 一片門／抽屜：圓角 1.5 mm 的木板（世界座標 UV，木紋跨門連續） */
@@ -66,7 +66,7 @@ function panel(b: Build, f: FrontFrame, a0: number, a1: number, h0: number, h1: 
  * 依 fronts 建櫃體：每個分區後面一塊櫃體（開放格則是挖空的格子），前面是門片；門縫露出深色底，
  * 讓分割線讀得出來。depth 為櫃體總深（px），carcassTop 可降低櫃體頂（例如水槽下方）。
  */
-function buildFronts(b: Build, f: FrontFrame, fronts: readonly Front[], opt: { carcassTop?: number } = {}): void {
+export function buildFronts(b: Build, f: FrontFrame, fronts: readonly Front[], opt: { carcassTop?: number } = {}): void {
   const { mat } = b;
   const depth = Math.abs(f.back - f.face);
   const g = GAP / 2, gm = 0.0015;

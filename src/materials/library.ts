@@ -44,6 +44,55 @@ function rampTexture(): THREE.Texture {
 /** 書櫃陳列師常用的書色：象牙、沙色、燕麥、灰褐、炭灰，加一兩本鏽紅、灰綠（去掉書衣、色塊分群） */
 const BOOK_COLORS = [0xede7da, 0xcdbfa8, 0xbfb2a0, 0x8e8070, 0x3a3a38, 0x9a5a3c, 0x8f9a80];
 
+/**
+ * 毛圈布的法線貼圖：隨機小圓丘（毛圈約 1.5 mm）疊加、可無縫拼接；一張代表 4 cm（世界座標 UV 下 repeat 25）。
+ * 走近時才看得到，遠看靠 sheen 表現毛絨感。
+ */
+function terryNormalMap(): THREE.Texture {
+  const S = 256, hgt = new Float32Array(S * S);
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let n = 0; n < 2600; n++) {
+    const cx = Math.floor(rnd() * S), cy = Math.floor(rnd() * S), r = 3 + rnd() * 2.5, a = 0.6 + rnd() * 0.4, k = Math.ceil(r);
+    for (let dy = -k; dy <= k; dy++) for (let dx = -k; dx <= k; dx++) {
+      const d2 = (dx * dx + dy * dy) / (r * r);
+      if (d2 < 1) hgt[((cy + dy + S) % S) * S + ((cx + dx + S) % S)] += a * (1 - d2);
+    }
+  }
+  const c = document.createElement('canvas');
+  c.width = c.height = S;
+  const g = c.getContext('2d')!, img = g.createImageData(S, S), h = (x: number, y: number) => hgt[((y + S) % S) * S + ((x + S) % S)];
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const nx = -0.6 * (h(x + 1, y) - h(x - 1, y)), ny = -0.6 * (h(x, y + 1) - h(x, y - 1)), l = Math.hypot(nx, ny, 1);
+    img.data.set([(nx / l) * 127.5 + 127.5, (ny / l) * 127.5 + 127.5, (1 / l) * 127.5 + 127.5, 255], (y * S + x) * 4);
+  }
+  g.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(25, 25);
+  return tex;
+}
+
+/** 捲起毛巾的端面：一層層之間的螺旋暗線（白底，乘上毛巾顏色） */
+function rollEndTexture(): THREE.Texture {
+  const S = 128, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#fff';
+  g.fillRect(0, 0, S, S);
+  g.strokeStyle = 'rgba(0,0,0,0.38)';
+  g.lineWidth = 2.5;
+  g.beginPath();
+  for (let t = 0; t <= 1; t += 0.002) {
+    const a = t * 4.5 * 2 * Math.PI, r = 5 + t * 56;
+    g.lineTo(S / 2 + r * Math.cos(a), S / 2 + r * Math.sin(a));
+  }
+  g.stroke();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 export function createMaterials(tex: TextureLibrary) {
   const PBR = (name: TexName, tint?: RGB, o: THREE.MeshStandardMaterialParameters = {}) => {
     const m = new THREE.MeshStandardMaterial({
@@ -60,6 +109,11 @@ export function createMaterials(tex: TextureLibrary) {
   };
   const M = (o: THREE.MeshStandardMaterialParameters) =>
     new THREE.MeshStandardMaterial({ roughness: 0.8, metalness: 0, ...o });
+  const terryN = terryNormalMap(), rollEnd = rollEndTexture();
+  const terry = (color: number, sheenColor: number, map?: THREE.Texture) => new THREE.MeshPhysicalMaterial({
+    color, map, roughness: 0.95, normalMap: map ? undefined : terryN, normalScale: new THREE.Vector2(0.6, 0.6),
+    sheen: 1, sheenRoughness: 0.6, sheenColor,
+  });
 
   const mat = {
     wall: PBR('plaster', TINTS.wall),
@@ -92,9 +146,8 @@ export function createMaterials(tex: TextureLibrary) {
     white: new THREE.MeshPhysicalMaterial({ color: 0xe0e0dd, roughness: 0.04, ior: 1.5 }),
     // 壓克力浴缸（PMMA ior 1.49）
     acrylic: new THREE.MeshPhysicalMaterial({ color: 0xebebe8, roughness: 0.07, ior: 1.49 }),
-    // 浴缸的水：ior 1.333，幾乎無色
-    water: new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 1, roughness: 0.02, ior: 1.333, thickness: 0.35,
-      attenuationColor: new THREE.Color().setRGB(0.969, 0.996, 0.997), attenuationDistance: 1 }),
+    // 馬桶座蓋（尿素樹脂，比陶瓷略霧）
+    seat: new THREE.MeshPhysicalMaterial({ color: 0xe6e6e2, roughness: 0.2, ior: 1.5 }),
     // 鏡子：銀鏡反射率約 86%（AGC Mirox，EN 1036），玻璃含鐵帶極淡綠；鏡面本身另有即時平面反射
     mirror: M({ color: 0xf0f3f1, roughness: 0.02, metalness: 1 }),
     // 清玻璃（浮法 ior 1.52）：穿透材質，反射不會被透明度一起淡掉；薄片（thickness 0）不折射
@@ -132,8 +185,23 @@ export function createMaterials(tex: TextureLibrary) {
     coverClear: new THREE.MeshStandardMaterial({ color: 0xd8dcdc, transparent: true, opacity: 0.35, roughness: 0.2, depthWrite: false }),
     // 間接燈在天花／牆面上的光暈（加色疊加，強度隨日夜切換；見 lighting.ts）
     coveGlow: new THREE.MeshBasicMaterial({ color: 0xffb36b, map: rampTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }),
-    // 衛浴霧面玻璃
-    frosted: new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 1, roughness: 0.45, ior: 1.52, thickness: 0 }),
+    // 衛浴霧面玻璃：蝕刻面把窗外的光完全打散，室內看到的是一片均勻亮面，不做穿透
+    // （three.js 穿透玻璃後面的穿透物件不會畫，隔著淋浴隔屏看會變成透明窗）；發光亮度由 main.ts 依窗外 HDRI 設定。
+    // 室內側：粗糙反射＋少量背向散射
+    frosted: new THREE.MeshPhysicalMaterial({ color: 0x5e6060, roughness: 0.5, ior: 1.52 }),
+    // 毛巾（毛圈布）：粗糙 0.95＋絨面光澤，毛圈用法線貼圖；白 #ECE8E1、燕麥 #CBBDA8；捲起來的端面另有螺旋貼圖
+    towelWhite: terry(0xece8e1, 0xffffff),
+    towelOat: terry(0xcbbda8, 0xe8dfcf),
+    towelWhiteEnd: terry(0xece8e1, 0xffffff, rollEnd),
+    towelOatEnd: terry(0xcbbda8, 0xe8dfcf, rollEnd),
+    // 琥珀玻璃瓶（裝了液體看起來是深咖啡色）；不做穿透，理由同霧面玻璃
+    amber: new THREE.MeshPhysicalMaterial({ color: 0x4a2408, roughness: 0.05, ior: 1.52 }),
+    // 蠟燭：深色玻璃杯＋蠟
+    darkGlass: new THREE.MeshPhysicalMaterial({ color: 0x1c1b1a, roughness: 0.06, ior: 1.52 }),
+    wax: M({ color: 0xeee6d6, roughness: 0.55 }),
+    // 衛生紙、霧面白陶盆
+    paper: M({ color: 0xf2f0ea, roughness: 0.9 }),
+    potWhite: M({ color: 0xd8d3c8, roughness: 0.75 }),
   };
   for (const [k, m] of Object.entries(mat)) m.name = k;
 

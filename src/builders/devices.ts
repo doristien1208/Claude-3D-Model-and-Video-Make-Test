@@ -1,8 +1,7 @@
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { X, Z } from '../core/units';
-import { wallDevices, type Side, type WallDevice } from '../data/layout';
-import type { Build } from './prims';
+import { wallDevices, type WallDevice } from '../data/layout';
+import { FACING_YAW, gbox, type Build } from './prims';
 
 /*
  * 開關插座面板，參考 Panasonic RISNA（WTRF6891HS）：橫式 120 × 70 × 9 mm、圓角；
@@ -13,18 +12,8 @@ import type { Build } from './prims';
 const PLATE = { w: 0.12, h: 0.07, t: 0.009 };
 const OPEN = { w: 0.092, h: 0.043 };
 
-/** 面板朝向 → 本地 z 軸（離牆方向）在世界座標的旋轉角 */
-const yaw: Record<Side, number> = { S: 0, N: Math.PI, E: Math.PI / 2, W: -Math.PI / 2 };
-
-function box(g: THREE.Group, w: number, h: number, d: number, x: number, y: number, z: number, m: THREE.Material, r = 0): THREE.Mesh {
-  const geo = r > 0 ? new RoundedBoxGeometry(w, h, d, 2, r) : new THREE.BoxGeometry(w, h, d);
-  const me = new THREE.Mesh(geo, m);
-  me.position.set(x, y, z);
-  me.castShadow = false;
-  me.receiveShadow = true;
-  g.add(me);
-  return me;
-}
+const box = (g: THREE.Group, w: number, h: number, d: number, x: number, y: number, z: number, m: THREE.Material, r = 0) =>
+  gbox(g, w, h, d, x, y, z, m, r, false);
 
 /** 一個接地插座（兩條插槽＋接地孔），中心在 (cx, cy)，面在 z */
 function outlet(g: THREE.Group, cx: number, cy: number, z: number, m: THREE.Material): void {
@@ -37,7 +26,7 @@ function device(b: Build, d: WallDevice): void {
   const { mat } = b;
   const g = new THREE.Group();
   g.position.set(X(d.at[0]), d.h, Z(d.at[1]));
-  g.rotation.y = yaw[d.facing];
+  g.rotation.y = FACING_YAW[d.facing];
   b.root.add(g);
   const plate = d.finish === 'white' ? mat.plateWhite : mat.plateDark, face = PLATE.t;
 

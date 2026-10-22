@@ -10,6 +10,7 @@ import { createMaterials } from './materials/library';
 import { TextureLibrary } from './materials/textures';
 import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 import { EnvProbes } from './render/envProbes';
+import { FROSTED_T, hemisphereMean } from './render/hdriGlow';
 import { createRenderer } from './render/renderer';
 import { createDock, showWebGLError, type Mode } from './ui/dock';
 import { Minimap } from './ui/minimap';
@@ -38,6 +39,8 @@ const OUTDOOR = {
   night: { file: 'shanghai_bund_4k.hdr', intensity: 0.8, rotation: 0 },
 } as const;
 const hdri: Partial<Record<'day' | 'night', THREE.Texture>> = {};
+/** 每片霧面玻璃在日／夜的發光亮度（窗外 HDRI 朝外半球的平均 × 透光率） */
+const frostedGlow: Partial<Record<'day' | 'night', THREE.Color[]>> = {};
 /** 貼圖與 HDRI 都載入後才拍環境探針 */
 let probesReady = false;
 /**
@@ -99,9 +102,17 @@ function probeState(): () => void {
   };
 }
 
+const BLACK = new THREE.Color(0);
+/** 霧面玻璃亮度跟著日夜（要在拍環境探針之前設好） */
+function applyFrosted(): void {
+  const glow = frostedGlow[night ? 'night' : 'day'];
+  house.build.frosted.forEach((f, i) => (f.mesh.material as THREE.MeshStandardMaterial).emissive.copy(glow?.[i] ?? BLACK));
+}
+
 function applyLight(): void {
   lights.apply(night);
   applyOutdoor(mode === 'walk');
+  applyFrosted();
   if (probesReady) {
     probes.apply(night ? 'night' : 'day', probeState);
     compileThenRender();
@@ -168,6 +179,8 @@ const outdoorReady = Promise.all((['day', 'night'] as const).map(async (k) => {
   const t = await hdrLoader.loadAsync(OUTDOOR[k].file);
   t.mapping = THREE.EquirectangularReflectionMapping;
   hdri[k] = t;
+  const { rotation, intensity } = OUTDOOR[k];
+  frostedGlow[k] = house.build.frosted.map((f) => hemisphereMean(t, f.out, rotation).multiplyScalar(FROSTED_T * intensity));
 })).catch((e) => console.warn('窗外 HDRI 載入失敗（請先執行 npm run fetch:hdri）', e));
 Promise.all([textures.ready, outdoorReady]).then(() => {
   probesReady = true;
