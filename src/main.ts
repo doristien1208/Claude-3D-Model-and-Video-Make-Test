@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import './ui/style.css';
 import { buildHouse } from './builders';
+import { CURTAIN_PRESETS } from './builders/curtains';
 import { createOrbit, ORBIT_FOV } from './cameras/orbit';
 import { WALK_FOV, WalkController } from './cameras/walk';
 import { viewpoints, walkStart } from './data/layout';
@@ -35,7 +36,7 @@ const clipPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1.45);
 const { orbit, goHome } = createOrbit(camera, renderer.domElement);
 const walk = new WalkController(camera, renderer.domElement, house.build.solids, walkStart);
 walk.dynamicSolids = house.doors.solids;
-createPanel(house.doors);
+createPanel(house.doors, house.build.curtains);
 const minimap = new Minimap(document.getElementById('mapc') as HTMLCanvasElement, house.build.planSegs, walk);
 
 const dock = createDock(viewpoints, {
@@ -51,6 +52,9 @@ const dock = createDock(viewpoints, {
 function applyLight(): void {
   lights.apply(night);
   dock.showNight(night);
+  // 窗簾展示狀態跟著日夜切換
+  const p = night ? CURTAIN_PRESETS.night : CURTAIN_PRESETS.day;
+  for (const c of house.build.curtains) { c.set('sheer', p.sheer); c.set('main', p.main); }
 }
 function setNight(v: boolean): void {
   night = v;
@@ -104,6 +108,7 @@ requestAnimationFrame(loop);
 
 /* ---------- 除錯／比對介面（與參考版 window.__dbg 相同） ---------- */
 Object.assign(window, {
-  __dbg: { setMode, walk: walk.state, applyLight, setNight, setCut, camera, orbit, setDoor: (id: string, t: number) => house.doors.set(id, t) },
+  __dbg: { setMode, walk: walk.state, applyLight, setNight, setCut, camera, orbit, setDoor: (id: string, t: number) => house.doors.set(id, t),
+    setCurtain: (id: string, layer: 'sheer' | 'main', t: number) => house.build.curtains.find((c) => c.id === id)?.set(layer, t) },
   __app: { THREE, scene, renderer, camera, build: house.build, doors: house.doors, ready: textures.ready },
 });

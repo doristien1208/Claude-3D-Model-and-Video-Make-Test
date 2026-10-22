@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { X, Z } from '../core/units';
 import type { Rect } from '../data/layout';
 import type { Materials } from '../materials/library';
+import type { CurtainCtl } from './curtains';
 
 /** 行走碰撞方塊（世界公尺）[minX, minZ, maxX, maxZ] */
 export type Solid = [number, number, number, number];
@@ -47,6 +48,8 @@ export class Build {
   readonly planSegs: PlanSeg[] = [];
   /** 發光件（之後做選擇性 bloom 用） */
   readonly glow: THREE.Mesh[] = [];
+  /** 可開合的窗簾（見 curtains.ts） */
+  readonly curtains: CurtainCtl[] = [];
   readonly mat: Materials['mat'];
   readonly books: Materials['books'];
 

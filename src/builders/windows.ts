@@ -1,18 +1,28 @@
-import type * as THREE from 'three';
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { X, Z } from '../core/units';
 import { CEILING_H as H, CURTAIN_BOX, site, windowSpecs, type WindowSpec } from '../data/layout';
 import { findOpening, isHorizontal } from '../data/query';
-import { rectAlong, type BoxOpt, type Build } from './prims';
+import { rectAlong, worldUV, type BoxOpt, type Build } from './prims';
 
-/* ---------- 尺寸（px = cm，高度為 m） ---------- */
-const SETBACK = 2;   // 外框離外牆面
-const DEPTH = 7;     // 外框深
-const FW = 5;        // 外框面寬（高度方向 0.05 m）
-const MULLION = 6;   // 推射窗扇之間的中梃
-const SASH = 4;      // 推射窗扇框寬
-const SASH_D = 4.5;  // 推射窗扇深（貼外框室內側）
-const GLASS = 0.6;   // 玻璃厚
-const SILL_OUT = 3;  // 石材窗台凸出牆面
-const PAD = 0.6;     // 牆體在開口邊多伸出的量（見 architecture.ts），窗洞側面實際在 s + PAD
+/*
+ * 鋁窗斷面（px = cm），參考 YKK AP 台灣 YRB-A 型錄斷面圖：
+ *  外框：側 2.5、上 3.0、下 5.5，框深 7
+ *  橫拉扇：外側立框 4.15、中間交會立框各 2.0（重疊後看到約 4）、上 4.1、下 4.6，扇深 2.8
+ *  固定玻璃壓條：2.5；中楣芯 2.0
+ *  推射扇：側 6.6、上 5.5、下 4.5，扇深 4
+ *  細框固定窗（客廳）：外框 2.5＋壓條 2.0，下框 3.0＋2.0
+ */
+const SETBACK = 1;    // 外框離外牆面
+const DEPTH = 7;
+const FRAME = { side: 2.5, head: 3.0, sill: 5.5 };
+const SLIDE = { stile: 4.15, meet: 2.0, top: 4.1, bottom: 4.6, depth: 2.8 };
+const BEAD = 2.5;
+const TRANSOM = 2.0;
+const AWNING = { side: 6.6, top: 5.5, bottom: 4.5, depth: 4 };
+const GLASS = 0.6;
+const SILL_OUT = 2, SILL_EAR = 2.5, SILL_T = 0.02; // 人造石窗台：凸出牆面 2 cm、兩側各長 2.5 cm、厚 2 cm
+const PAD = 0.6;      // 牆體在窗洞邊多伸出的量（見 architecture.ts）
 
 /** 外牆上一扇窗的局部座標：ce 為外牆面、ci 為室內牆面，σ 為由外往內的方向 */
 export interface WinFrame {
@@ -36,65 +46,123 @@ export function winFrame(openingId: string): WinFrame {
 
 export const windowSpec = (openingId: string): WindowSpec | undefined => windowSpecs.find((w) => w.opening === openingId);
 
-/** 固定窗＋推射窗：外框、中楣、固定玻璃、推射窗扇（含把手）、室內窗台 */
 function windowUnit(b: Build, spec: WindowSpec, ceiling: THREE.Group): void {
   const { mat } = b;
   const f = winFrame(spec.opening);
   const { s, e, bot, top, ce, ci, σ } = f;
-  const B = (a0: number, a1: number, k0: number, k1: number, h0: number, h1: number, m: THREE.Material, opt?: BoxOpt) =>
-    b.box(rectAlong(f.hor, a0, a1, k0, k1), h0, h1, m, opt);
-  const k0 = ce + σ * SETBACK, k1 = ce + σ * (SETBACK + DEPTH), kc = (k0 + k1) / 2;
-  const F = FW / 100, glass = spec.frosted ? mat.frosted : mat.glass;
+  const glass = spec.frosted ? mat.frosted : mat.glass;
+  // across 以「離外框外側的深度」表示：0 = 外框外緣，DEPTH = 外框內緣
+  const k = (d: number) => ce + σ * (SETBACK + d);
+  const B = (a0: number, a1: number, d0: number, d1: number, h0: number, h1: number, m: THREE.Material, opt?: BoxOpt) =>
+    b.box(rectAlong(f.hor, a0, a1, k(d0), k(d1)), h0, h1, m, opt);
+  const m = (v: number) => v / 100; // px → m（高度方向）
 
-  // 外框
-  B(s, e, k0, k1, top - F, top, mat.alu);
-  B(s, e, k0, k1, bot, bot + F, mat.alu);
-  B(s, s + FW, k0, k1, bot + F, top - F, mat.alu);
-  B(e - FW, e, k0, k1, bot + F, top - F, mat.alu);
+  /* 外框 */
+  const fr = spec.type === 'fixed' ? { side: 2.5, head: 2.5, sill: 3.0 } : FRAME;
+  B(s, e, 0, DEPTH, top - m(fr.head), top, mat.alu);
+  B(s, e, 0, DEPTH, bot, bot + m(fr.sill), mat.alu);
+  B(s, s + fr.side, 0, DEPTH, bot + m(fr.sill), top - m(fr.head), mat.alu);
+  B(e - fr.side, e, 0, DEPTH, bot + m(fr.sill), top - m(fr.head), mat.alu);
+  const a0 = s + fr.side, a1 = e - fr.side, h0 = bot + m(fr.sill), h1 = top - m(fr.head);
 
-  // 推射窗扇在下方一排（或整扇）；寬於 1.2 m 分兩扇
-  const aTop = spec.awning === 'all' ? top - F : bot + (spec.awningH ?? 0.5);
-  if (spec.awning === 'bottom') {
-    B(s + FW, e - FW, k0, k1, aTop - 0.03, aTop + 0.03, mat.alu);
-    B(s + FW, e - FW, kc - GLASS / 2, kc + GLASS / 2, aTop + 0.03, top - F, glass, { cast: false });
+  /** 固定玻璃：四周壓條＋玻璃（玻璃在外框深度中央） */
+  const fixedLite = (x0: number, x1: number, y0: number, y1: number, bead = BEAD, d0 = 1.5, d1 = DEPTH - 1.5) => {
+    B(x0, x1, d0, d1, y0, y0 + m(bead), mat.alu);
+    B(x0, x1, d0, d1, y1 - m(bead), y1, mat.alu);
+    B(x0, x0 + bead, d0, d1, y0 + m(bead), y1 - m(bead), mat.alu);
+    B(x1 - bead, x1, d0, d1, y0 + m(bead), y1 - m(bead), mat.alu);
+    const dc = (d0 + d1) / 2;
+    B(x0 + bead, x1 - bead, dc - GLASS / 2, dc + GLASS / 2, y0 + m(bead), y1 - m(bead), glass, { cast: false });
+  };
+  /** 橫拉扇：dIn 為扇的深度位置（靠室內或靠室外軌道）；lockAt 為鎖的位置（along） */
+  const slideSash = (x0: number, x1: number, y0: number, y1: number, d0: number, meetAtStart: boolean, lockAt?: number) => {
+    const d1 = d0 + SLIDE.depth, dc = d0 + SLIDE.depth / 2;
+    const sw0 = meetAtStart ? SLIDE.meet : SLIDE.stile, sw1 = meetAtStart ? SLIDE.stile : SLIDE.meet;
+    B(x0, x1, d0, d1, y0, y0 + m(SLIDE.bottom), mat.alu);
+    B(x0, x1, d0, d1, y1 - m(SLIDE.top), y1, mat.alu);
+    B(x0, x0 + sw0, d0, d1, y0 + m(SLIDE.bottom), y1 - m(SLIDE.top), mat.alu);
+    B(x1 - sw1, x1, d0, d1, y0 + m(SLIDE.bottom), y1 - m(SLIDE.top), mat.alu);
+    B(x0 + sw0, x1 - sw1, dc - GLASS / 2, dc + GLASS / 2, y0 + m(SLIDE.bottom), y1 - m(SLIDE.top), glass, { cast: false });
+    if (lockAt !== undefined) {
+      // 月牙鎖／把手：扇框室內面、扇高中段
+      const ym = (y0 + y1) / 2;
+      B(lockAt - 1, lockAt + 1, d1, d1 + 1.6, ym - 0.05, ym + 0.05, mat.black);
+    }
+  };
+  const IN = DEPTH - 0.4 - SLIDE.depth, OUT = 0.4; // 室內軌道、室外軌道的扇深度起點
+
+  switch (spec.type) {
+    case 'slideOverFixed': {
+      // 下固定（到 splitH）＋中楣＋上方雙扇橫拉，中間交會
+      const sp = spec.splitH ?? 1.2;
+      B(a0, a1, 0, DEPTH, sp - m(TRANSOM), sp, mat.alu);
+      fixedLite(a0, a1, h0, sp - m(TRANSOM));
+      const w = (a1 - a0 + SLIDE.meet) / 2;
+      slideSash(a0, a0 + w, sp, h1, IN, false, a0 + w - SLIDE.meet / 2);
+      slideSash(a1 - w, a1, sp, h1, OUT, true);
+      break;
+    }
+    case 'slideFixedSlide': {
+      // 中間固定玻璃在室外側；兩側橫拉扇在室內軌道，可滑到固定玻璃前；鎖在靠窗框的立框
+      const inner = a1 - a0, w = inner / 4 + SLIDE.meet / 2;
+      fixedLite(a0 + w - SLIDE.meet, a1 - w + SLIDE.meet, h0, h1, BEAD, 0.4, 0.4 + SLIDE.depth + 1);
+      slideSash(a0, a0 + w, h0, h1, IN, false, a0 + SLIDE.stile / 2);
+      slideSash(a1 - w, a1, h0, h1, IN, true, a1 - SLIDE.stile / 2);
+      break;
+    }
+    case 'awning': {
+      // 整扇推射：扇框貼外框室內側，把手在下框中央
+      const d0 = DEPTH - 0.3 - AWNING.depth, d1 = DEPTH - 0.3, dc = (d0 + d1) / 2;
+      B(a0, a1, d0, d1, h0, h0 + m(AWNING.bottom), mat.alu);
+      B(a0, a1, d0, d1, h1 - m(AWNING.top), h1, mat.alu);
+      B(a0, a0 + AWNING.side, d0, d1, h0 + m(AWNING.bottom), h1 - m(AWNING.top), mat.alu);
+      B(a1 - AWNING.side, a1, d0, d1, h0 + m(AWNING.bottom), h1 - m(AWNING.top), mat.alu);
+      B(a0 + AWNING.side, a1 - AWNING.side, dc - GLASS / 2, dc + GLASS / 2, h0 + m(AWNING.bottom), h1 - m(AWNING.top), glass, { cast: false });
+      const am = (a0 + a1) / 2;
+      B(am - 6, am + 6, d1, d1 + 2, h0 + 0.012, h0 + 0.03, mat.black);
+      break;
+    }
+    case 'fixed':
+      // 一整片固定玻璃，壓條 2 cm
+      fixedLite(a0, a1, h0, h1, 2.0);
+      break;
   }
-  const sashTop = spec.awning === 'all' ? top - F : aTop - 0.03;
-  const inner = e - s - 2 * FW, n = inner > 120 ? 2 : 1, span = (inner - (n - 1) * MULLION) / n;
-  const q0 = k1 - σ * SASH_D, q1 = k1 - σ * 0.3, qc = (q0 + q1) / 2, S = SASH / 100;
-  for (let i = 0; i < n; i++) {
-    const a0 = s + FW + i * (span + MULLION), a1 = a0 + span, h0 = bot + F, h1 = sashTop;
-    if (i > 0) B(a0 - MULLION, a0, k0, k1, h0, h1, mat.alu);
-    B(a0, a1, q0, q1, h0, h0 + S, mat.alu);
-    B(a0, a1, q0, q1, h1 - S, h1, mat.alu);
-    B(a0, a0 + SASH, q0, q1, h0 + S, h1 - S, mat.alu);
-    B(a1 - SASH, a1, q0, q1, h0 + S, h1 - S, mat.alu);
-    B(a0 + SASH, a1 - SASH, qc - GLASS / 2, qc + GLASS / 2, h0 + S, h1 - S, glass, { cast: false });
-    // 推射窗把手：下框中央，往室內凸出 2 cm
-    const am = (a0 + a1) / 2;
-    B(am - 5, am + 5, q1, q1 + σ * 2, h0 + 0.012, h0 + 0.028, mat.black);
-  }
 
-  // 室內窗台：上緣比窗洞底高 1 cm
-  if (spec.sill === 'stone') B(s, e, k1, ci + σ * SILL_OUT, bot - 0.01, bot + 0.01, mat.stoneWarm);
-  else if (spec.sill === 'flush') B(s, e, k1, ci, bot - 0.01, bot + 0.01, mat.stone);
-  else {
+  /* 室外鋁製窗台泛水（往外凸出 3 cm） */
+  B(s - 1, e + 1, -3 - SETBACK, 0.5, bot - 0.03, bot, mat.alu);
+
+  /* 室內窗台 */
+  if (spec.sill === 'stone') {
+    // 人造石：凸出牆面 2 cm、兩側各長出 2.5 cm、邊角倒圓
+    const [x1, y1, x2, y2] = rectAlong(f.hor, s - SILL_EAR, e + SILL_EAR, k(DEPTH), ci + σ * SILL_OUT);
+    const geo = new RoundedBoxGeometry((x2 - x1) / 100, SILL_T, (y2 - y1) / 100, 2, 0.004);
+    const me = new THREE.Mesh(geo, mat.stoneWarm);
+    me.position.set(X((x1 + x2) / 2), bot + 0.005 - SILL_T / 2, Z((y1 + y2) / 2));
+    worldUV(geo, me.position);
+    me.castShadow = me.receiveShadow = true;
+    b.root.add(me);
+  } else if (spec.sill === 'flush') {
+    b.box(rectAlong(f.hor, s, e, k(DEPTH), ci), bot - 0.015, bot + 0.005, mat.stone);
+  } else {
     // 衛浴：窗洞內側（側面、上方、窗台）都貼石材，與牆面石材平齊
     const t = ci + σ * 1, o = { cast: false };
-    B(s, e, k1, t, bot - 0.01, bot + 0.01, mat.tileLight, o);
-    B(s + PAD, s + PAD + 0.5, k1, t, bot, top, mat.tileLight, o);
-    B(e - PAD - 0.5, e - PAD, k1, t, bot, top, mat.tileLight, o);
-    B(s, e, k1, t, top - 0.005, top, mat.tileLight, o);
+    b.box(rectAlong(f.hor, s, e, k(DEPTH), t), bot - 0.015, bot + 0.005, mat.tileLight, o);
+    b.box(rectAlong(f.hor, s + PAD, s + PAD + 0.5, k(DEPTH), t), bot, top, mat.tileLight, o);
+    b.box(rectAlong(f.hor, e - PAD - 0.5, e - PAD, k(DEPTH), t), bot, top, mat.tileLight, o);
+    b.box(rectAlong(f.hor, s, e, k(DEPTH), t), top - 0.005, top, mat.tileLight, o);
   }
 
-  // 窗簾盒：做滿整面牆的面板＋兩端封板＋盒內軌道，跟天花板同一組（俯瞰時隱藏）
+  /* 窗簾盒：做滿整面牆的面板＋兩端封板＋紗簾與布簾兩條軌道，跟天花板同一組（俯瞰時隱藏） */
   if (spec.curtainBox) {
-    const { from, to } = spec.curtainBox, D = CURTAIN_BOX.depth, h0 = CURTAIN_BOX.h0;
-    for (const m of [
-      B(from, to, ci + σ * (D - 2), ci + σ * D, h0, H, mat.ceil),
-      B(from, from + 2, ci, ci + σ * D, h0, H, mat.ceil),
-      B(to - 2, to, ci, ci + σ * D, h0, H, mat.ceil),
-      B(from + 2, to - 2, ci + σ * 8, ci + σ * 9, 2.74, 2.76, mat.alu),
-    ]) ceiling.add(m);
+    const { from, to } = spec.curtainBox, D = CURTAIN_BOX.depth, hb = CURTAIN_BOX.h0;
+    const R = (a0: number, a1: number, c0: number, c1: number) => rectAlong(f.hor, a0, a1, ci + σ * c0, ci + σ * c1);
+    for (const me of [
+      b.box(R(from, to, D - 2, D), hb, H, mat.ceil),
+      b.box(R(from, from + 2, 0, D), hb, H, mat.ceil),
+      b.box(R(to - 2, to, 0, D), hb, H, mat.ceil),
+      b.box(R(from + 2, to - 2, CURTAIN_BOX.sheerTrack - 1, CURTAIN_BOX.sheerTrack + 1), 2.76, 2.78, mat.alu),
+      b.box(R(from + 2, to - 2, CURTAIN_BOX.mainTrack - 1, CURTAIN_BOX.mainTrack + 1), 2.76, 2.78, mat.alu),
+    ]) ceiling.add(me);
   }
 }
 

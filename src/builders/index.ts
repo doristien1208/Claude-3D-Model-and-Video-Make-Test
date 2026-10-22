@@ -2,6 +2,7 @@ import { items, lighting, type Item, type ItemType } from '../data/layout';
 import type { ItemOf } from '../data/query';
 import type { Materials } from '../materials/library';
 import { buildArchitecture, type Architecture } from './architecture';
+import { curtains } from './curtains';
 import * as decor from './decor';
 import { buildDoors, collectObstacles, type Doors } from './doors';
 import * as fixtures from './fixtures';
@@ -27,7 +28,7 @@ const registry: { [T in ItemType]: Builder<T> } = {
   bed: furniture.bed,
   nightstand: furniture.nightstand,
   rug: furniture.rug,
-  curtains: furniture.curtains,
+  curtains,
   desk: furniture.desk,
   officeChair: furniture.officeChair,
   sofaL: furniture.sofaL,

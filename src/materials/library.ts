@@ -87,6 +87,9 @@ export function createMaterials(tex: TextureLibrary) {
     gap: M({ color: 0x1a1715, roughness: 0.9 }),
     // 深色鋁框（窗、陽台拉門）
     alu: M({ color: 0x232120, roughness: 0.4, metalness: 0.6 }),
+    // 窗簾：象牙白麻紗（半透明）、燕麥色布簾；雙面
+    sheer: PBR('fabric', [1.55, 1.5, 1.38], { transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false, vertexColors: true }),
+    drape: PBR('fabric', [0.92, 0.8, 0.64], { side: THREE.DoubleSide, vertexColors: true }),
     // 衛浴霧面玻璃
     frosted: new THREE.MeshStandardMaterial({ color: 0xe6eaea, transparent: true, opacity: 0.62, roughness: 0.5, depthWrite: false }),
   };

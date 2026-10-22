@@ -1,8 +1,9 @@
 import GUI from 'lil-gui';
+import type { CurtainCtl } from '../builders/curtains';
 import type { Doors } from '../builders/doors';
 
-/** 參數面板（左側，標題卡下方）：目前只有門的開關 */
-export function createPanel(doors: Doors): GUI {
+/** 參數面板（左側，標題卡下方）：門與窗簾的開合 */
+export function createPanel(doors: Doors, curtains: readonly CurtainCtl[]): GUI {
   const gui = new GUI({ title: '參數' });
   gui.domElement.classList.add('panel');
 
@@ -14,5 +15,12 @@ export function createPanel(doors: Doors): GUI {
   const all = (t: number) => () => { for (const d of doors.list) d.set(t); };
   f.add({ 全部打開: all(1) }, '全部打開');
   f.add({ 全部關上: all(0) }, '全部關上');
+  f.close();
+
+  const c = gui.addFolder('窗簾（0 收起 ～ 1 拉上；切換日夜時套用預設）');
+  for (const ct of curtains) {
+    c.add(ct, 'sheer', 0, 1, 0.01).name(`${ct.label}・紗簾`).onChange((v: number) => ct.set('sheer', v)).listen();
+    c.add(ct, 'main', 0, 1, 0.01).name(`${ct.label}・布簾`).onChange((v: number) => ct.set('main', v)).listen();
+  }
   return gui;
 }
