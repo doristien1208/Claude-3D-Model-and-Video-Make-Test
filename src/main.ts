@@ -8,11 +8,10 @@ import { viewpoints, walkStart } from './data/layout';
 import { Lighting } from './lighting/lighting';
 import { createMaterials } from './materials/library';
 import { TextureLibrary } from './materials/textures';
-import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 import { EnvProbes } from './render/envProbes';
 import { LightMask } from './render/lightMask';
-import { FROSTED_T, hemisphereMean } from './render/hdriGlow';
 import { createRenderer } from './render/renderer';
+import { WindowView } from './render/windowView';
 import { createDock, showWebGLError, type Mode } from './ui/dock';
 import { Minimap } from './ui/minimap';
 import { createPanel } from './ui/panel';
@@ -36,15 +35,10 @@ const lightMask = new LightMask();
 const probes = new EnvProbes(renderer, scene, house.build.root, new Set([materials.mat.glow, materials.mat.glowSoft]), (s) => lightMask.patch(s));
 lightMask.update(scene);
 
-/* ---------- 窗外景觀（Poly Haven CC0 HDRI；先跑 npm run fetch:hdri） ---------- */
-const OUTDOOR = {
-  day: { file: 'hotel_rooftop_balcony_4k.hdr', intensity: 1.0, rotation: 0 },
-  night: { file: 'shanghai_bund_4k.hdr', intensity: 0.8, rotation: 0 },
-} as const;
-const hdri: Partial<Record<'day' | 'night', THREE.Texture>> = {};
-/** 每片霧面玻璃在日／夜的發光亮度（窗外 HDRI 朝外半球的平均 × 透光率） */
-const frostedGlow: Partial<Record<'day' | 'night', THREE.Color[]>> = {};
-/** 貼圖與 HDRI 都載入後才拍環境探針 */
+/* ---------- 窗外景觀（台中實拍照片；先跑 npm run fetch:backplates） ---------- */
+const view = new WindowView(scene);
+let viewReady = false;
+/** 貼圖與窗外照片都載入後才拍環境探針 */
 let probesReady = false;
 /**
  * 換了反射圖的材質要重新編譯；r186 會平行編譯著色器，沒編好的物件那一格直接不畫，
@@ -77,17 +71,11 @@ const dock = createDock(viewpoints, {
   },
 });
 
-/** 漫遊時窗外用 HDRI（室外地面隱藏）；俯瞰時維持純色背景與地面 */
+/** 漫遊時窗外顯示照片（室外地面隱藏）；俯瞰時只有純色背景與地面 */
 function applyOutdoor(walkView: boolean): void {
-  const key = night ? 'night' : 'day', tex = hdri[key];
-  if (walkView && tex) {
-    scene.background = tex;
-    scene.backgroundIntensity = OUTDOOR[key].intensity;
-    scene.backgroundRotation.set(0, OUTDOOR[key].rotation, 0);
-  } else {
-    lights.apply(night);
-  }
-  house.ground.visible = !(walkView && tex);
+  const show = walkView && viewReady;
+  view.show(show ? (night ? 'night' : 'day') : null);
+  house.ground.visible = !show;
 }
 
 /** 拍環境探針前把場景切到漫遊狀態，回傳還原函式 */
@@ -108,8 +96,8 @@ function probeState(): () => void {
 const BLACK = new THREE.Color(0);
 /** 霧面玻璃亮度跟著日夜（要在拍環境探針之前設好） */
 function applyFrosted(): void {
-  const glow = frostedGlow[night ? 'night' : 'day'];
-  house.build.frosted.forEach((f, i) => (f.mesh.material as THREE.MeshStandardMaterial).emissive.copy(glow?.[i] ?? BLACK));
+  const key = night ? 'night' : 'day';
+  for (const f of house.build.frosted) (f.mesh.material as THREE.MeshStandardMaterial).emissive.copy(view.frostedGlow(key, f.out) ?? BLACK);
 }
 
 function applyLight(): void {
@@ -176,17 +164,11 @@ function loop(t: number): void {
 }
 applyLight();
 setMode('orbit');
-// 貼圖與窗外 HDRI 載入後，換上窗外景觀並拍環境探針
-const hdrLoader = new HDRLoader().setPath(`${import.meta.env.BASE_URL}hdri/`);
-const outdoorReady = Promise.all((['day', 'night'] as const).map(async (k) => {
-  const t = await hdrLoader.loadAsync(OUTDOOR[k].file);
-  // 先轉成立方體貼圖當背景：讓 three.js 在繪製途中才轉（例如第一次拍環境探針時）會變成巢狀繪製，那一次只畫得出背景
-  const cube = new THREE.WebGLCubeRenderTarget(t.image.height / 2, { type: THREE.HalfFloatType }).fromEquirectangularTexture(renderer, t);
-  hdri[k] = cube.texture;
-  const { rotation, intensity } = OUTDOOR[k];
-  frostedGlow[k] = house.build.frosted.map((f) => hemisphereMean(t, f.out, rotation).multiplyScalar(FROSTED_T * intensity));
-})).catch((e) => console.warn('窗外 HDRI 載入失敗（請先執行 npm run fetch:hdri）', e));
-Promise.all([textures.ready, outdoorReady]).then(() => {
+// 貼圖與窗外照片載入後，換上窗外景觀並拍環境探針
+const viewLoaded = view.load(`${import.meta.env.BASE_URL}backplates/`, renderer.capabilities.getMaxAnisotropy())
+  .then(() => { viewReady = true; })
+  .catch((e) => console.warn('窗外照片載入失敗（請先執行 npm run fetch:backplates）', e));
+Promise.all([textures.ready, viewLoaded]).then(() => {
   probesReady = true;
   applyLight();
 });
@@ -196,5 +178,5 @@ requestAnimationFrame(loop);
 Object.assign(window, {
   __dbg: { setMode, walk: walk.state, applyLight, setNight, setCut, camera, orbit, setDoor: (id: string, t: number) => house.doors.set(id, t),
     setCurtain: (id: string, layer: 'sheer' | 'main', t: number) => house.build.curtains.find((c) => c.id === id)?.set(layer, t) },
-  __app: { THREE, scene, renderer, camera, build: house.build, doors: house.doors, probes, ready: textures.ready },
+  __app: { THREE, scene, renderer, camera, build: house.build, doors: house.doors, probes, view, ready: textures.ready },
 });
