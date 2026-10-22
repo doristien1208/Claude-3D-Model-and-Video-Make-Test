@@ -9,6 +9,8 @@ import * as fixtures from './fixtures';
 import * as furniture from './furniture';
 import * as millwork from './millwork';
 import { Build } from './prims';
+import { buildCoves } from './ceiling';
+import { buildDevices } from './devices';
 import { buildBaseboards } from './trim';
 import { buildWindows } from './windows';
 
@@ -84,6 +86,10 @@ export function buildHouse(materials: Materials): House {
   from = b.root.children.length;
   buildBaseboards(b);
   tagSince(b, from, '踢腳板');
+  from = b.root.children.length;
+  buildCoves(b, arch.ceiling);
+  buildDevices(b);
+  tagSince(b, from, '開關插座');
   // 門最後建：全開角度依前面已建好的牆與家具決定
   const doors = buildDoors(b, collectObstacles(b.root));
   return { build: b, doors, ...arch };

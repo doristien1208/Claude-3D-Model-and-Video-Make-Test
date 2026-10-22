@@ -26,7 +26,7 @@ const textures = new TextureLibrary(renderer);
 const materials = createMaterials(textures);
 const house = buildHouse(materials);
 scene.add(house.build.root, house.ground);
-const lights = new Lighting(scene, renderer, materials.mat);
+const lights = new Lighting(scene, renderer, materials.mat, house.build.areaLights);
 
 /* ---------- 狀態 ---------- */
 let night = true, cut = true, mode: Mode = 'orbit';

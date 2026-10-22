@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CEILING_H as H, floorZones, lighting, site, solidBlocks, wallTiles, walls, type Wall } from '../data/layout';
+import { CEILING_H as H, floorZones, site, solidBlocks, wallTiles, walls, type Wall } from '../data/layout';
 import { isHorizontal } from '../data/query';
 import type { Build } from './prims';
 
@@ -71,9 +71,6 @@ export function buildArchitecture(b: Build): Architecture {
 
   /* 衛浴牆面石材 */
   for (const s of wallTiles) b.box(s.rect, s.h[0], s.h[1], mat.tileLight, { cast: false });
-
-  /* 天花板間接光 */
-  for (const cv of lighting.coves) b.glowBox(cv.rect[0], cv.rect[1], cv.rect[2], cv.rect[3], cv.h[0], cv.h[1]);
 
   return { ceiling, ground };
 }

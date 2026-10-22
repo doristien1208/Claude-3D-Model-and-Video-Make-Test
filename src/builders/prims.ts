@@ -50,6 +50,8 @@ export class Build {
   readonly glow: THREE.Mesh[] = [];
   /** 可開合的窗簾（見 curtains.ts） */
   readonly curtains: CurtainCtl[] = [];
+  /** 夜間才開的面光源（洗簾燈等）與夜間強度 */
+  readonly areaLights: { light: THREE.RectAreaLight; intensity: number }[] = [];
   readonly mat: Materials['mat'];
   readonly books: Materials['books'];
 

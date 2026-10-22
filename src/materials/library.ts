@@ -25,6 +25,22 @@ export const TINTS = {
   chair: [0.085, 0.082, 0.083],
 } as const satisfies Record<string, RGB>;
 
+/** 光暈用的漸層：u = 0 最亮、u = 1 完全透明（貼在 map 上，搭配加色疊加） */
+function rampTexture(): THREE.Texture {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 1;
+  const g = c.getContext('2d')!, img = g.createImageData(256, 1);
+  for (let i = 0; i < 256; i++) {
+    const t = i / 255, v = Math.round(255 * Math.pow(1 - t, 2.2));
+    img.data.set([v, v, v, 255], i * 4);
+  }
+  g.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
+}
+
 const BOOK_COLORS = [0x8a7a68, 0x5d4c3f, 0xa49580, 0x3f4a48, 0xb8a68a, 0x6e5a4a, 0x2f3433];
 
 export function createMaterials(tex: TextureLibrary) {
@@ -90,6 +106,12 @@ export function createMaterials(tex: TextureLibrary) {
     // 窗簾：象牙白麻紗（半透明）、燕麥色布簾；雙面
     sheer: PBR('fabric', [1.55, 1.5, 1.38], { transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false, vertexColors: true }),
     drape: PBR('fabric', [0.92, 0.8, 0.64], { side: THREE.DoubleSide, vertexColors: true }),
+    // 開關插座面板：霧白（灰泥牆）、深灰（木作）；防水蓋
+    plateWhite: M({ color: 0xf1eee8, roughness: 0.35 }),
+    plateDark: M({ color: 0x3b3c3d, roughness: 0.4, metalness: 0.15 }),
+    coverClear: new THREE.MeshStandardMaterial({ color: 0xd8dcdc, transparent: true, opacity: 0.35, roughness: 0.2, depthWrite: false }),
+    // 間接燈在天花／牆面上的光暈（加色疊加，強度隨日夜切換；見 lighting.ts）
+    coveGlow: new THREE.MeshBasicMaterial({ color: 0xffb36b, map: rampTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }),
     // 衛浴霧面玻璃
     frosted: new THREE.MeshStandardMaterial({ color: 0xe6eaea, transparent: true, opacity: 0.62, roughness: 0.5, depthWrite: false }),
   };

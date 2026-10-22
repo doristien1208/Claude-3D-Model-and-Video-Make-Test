@@ -1,0 +1,91 @@
+import * as THREE from 'three';
+import { X, Z } from '../core/units';
+import { BULKHEAD_H, CEILING_H as H, coves, type Cove } from '../data/layout';
+import { rectAlong, type Build } from './prims';
+
+/*
+ * 局部降板與間接燈。參考：
+ *  - 跌級燈溝：擋光板比燈條高、開口（擋光板上緣到天花）至少 150 mm（Odelic、Nulty「150 mm 原則」）；燈條藏在擋光板後 40–75 mm
+ *  - 洗牆燈溝：貼牆與天花的交角留 70–100 mm 的縫（Fuji Sash スリットコーニス、Panasonic）
+ *  - 光暈：擋光板正上方最亮、往室內漸淡；開口越大越柔和（Odelic、DAIKO）
+ * 光暈目前用加色疊加的漸層面模擬（不會穿牆）；影片階段再換成真的面光源。
+ */
+const BOARD = 2;        // 降板板厚（px，高度方向 0.02 m）
+const LIP = 0.03;       // 擋光板比板面高（m）
+const GLOW_REACH = 90;  // 光暈往室內延伸（px）
+
+/** 一塊朝下或朝室內的光暈面；ramp 方向由 u0→u1 決定（u0 最亮） */
+function glowPlane(b: Build, ceiling: THREE.Group, corners: [THREE.Vector3, THREE.Vector3, THREE.Vector3, THREE.Vector3], ramp: [number, number, number, number]): void {
+  // corners 順序：亮邊兩點、暗邊兩點
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(corners.flatMap((v) => [v.x, v.y, v.z]), 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute([ramp[0], 0.5, ramp[1], 0.5, ramp[2], 0.5, ramp[3], 0.5], 2));
+  geo.setIndex([0, 2, 1, 1, 2, 3]);
+  const me = new THREE.Mesh(geo, b.mat.coveGlow);
+  me.renderOrder = 2;
+  ceiling.add(me);
+}
+
+function trough(b: Build, c: Extract<Cove, { kind: 'trough' }>, ceiling: THREE.Group): void {
+  const { mat } = b;
+  const k = (d: number) => c.face + c.into * d; // 離牆 d px 的 across 座標
+  const R = (a0: number, a1: number, d0: number, d1: number) => rectAlong(c.hor, a0, a1, k(d0), k(d1));
+  const top = BULKHEAD_H + BOARD / 100;
+  const parts = [
+    b.box(R(c.from, c.to, 0, c.width), BULKHEAD_H, top, mat.ceil),                         // 降板底板
+    b.box(R(c.from, c.to, c.width - 2, c.width), BULKHEAD_H, top + LIP, mat.ceil),          // 擋光板
+  ];
+  if (c.cap) {
+    const a = c.cap === 'from' ? c.from : c.to - 2;
+    parts.push(b.box(R(a, a + 2, 0, c.width), BULKHEAD_H, H, mat.ceil));                    // 自由端封板
+  }
+  // COB 燈條：板面上、擋光板後 5 cm
+  const led = b.box(R(c.from + 3, c.to - 3, c.width - 7.5, c.width - 5.5), top, top + 0.008, mat.glow, { cast: false });
+  b.glow.push(led);
+  for (const m of [...parts, led]) ceiling.add(m);
+
+  // 光暈：燈溝內的天花與牆面最亮，出了擋光板後往室內漸淡
+  const P = (along: number, d: number, h: number) => {
+    const [x, y] = c.hor ? [along, k(d)] : [k(d), along];
+    return new THREE.Vector3(X(x), h, Z(y));
+  };
+  const a0 = c.from + 2, a1 = c.to, hc = H - 0.002;
+  glowPlane(b, ceiling, [P(a0, 0.2, hc), P(a1, 0.2, hc), P(a0, c.width, hc), P(a1, c.width, hc)], [0, 0, 0.15, 0.15]);
+  glowPlane(b, ceiling, [P(a0, c.width, hc), P(a1, c.width, hc), P(a0, c.width + GLOW_REACH, hc), P(a1, c.width + GLOW_REACH, hc)], [0.15, 0.15, 1, 1]);
+  glowPlane(b, ceiling, [P(a0, 0.1, H), P(a1, 0.1, H), P(a0, 0.1, top), P(a1, 0.1, top)], [0, 0, 0.4, 0.4]);
+}
+
+function washSlot(b: Build, c: Extract<Cove, { kind: 'washSlot' }>, ceiling: THREE.Group): void {
+  const { mat } = b;
+  const k = (d: number) => c.face + c.into * d;
+  const R = (a0: number, a1: number, d0: number, d1: number) => rectAlong(c.hor, a0, a1, k(d0), k(d1));
+  const lit = Math.abs(c.litFace - c.face);           // 被照面離牆的距離
+  const s0 = lit, s1 = lit + c.slot;                  // 縫的範圍（離牆）
+  const parts = [
+    b.box(R(c.from, c.to, s1, c.depth), BULKHEAD_H, BULKHEAD_H + BOARD / 100, mat.ceil),   // 底板
+    b.box(R(c.from, c.to, s1, s1 + 2), BULKHEAD_H, H, mat.ceil),                           // 縫側立板
+    b.box(R(c.from, c.to, c.depth - 2, c.depth), BULKHEAD_H, H, mat.ceil),                 // 前緣面板
+  ];
+  if (c.cap) {
+    const a = c.cap === 'from' ? c.from : c.to - 2;
+    parts.push(b.box(R(a, a + 2, 0, c.depth), BULKHEAD_H, H, mat.ceil));
+  }
+  // 燈條：縫內靠近天花，往下打
+  const led = b.box(R(c.from + 2, c.to - 2, s0 + 3, s0 + 5), H - 0.03, H - 0.02, mat.glow, { cast: false });
+  b.glow.push(led);
+  for (const m of [...parts, led]) ceiling.add(m);
+
+  // 光暈：被照面由上往下漸淡（洗到約 1.6 m）
+  const P = (along: number, h: number) => {
+    const [x, y] = c.hor ? [along, k(s0 - 0.1)] : [k(s0 - 0.1), along];
+    return new THREE.Vector3(X(x), h, Z(y));
+  };
+  glowPlane(b, ceiling, [P(c.from + 2, H), P(c.to - 2, H), P(c.from + 2, H - 1.6), P(c.to - 2, H - 1.6)], [0, 0, 1, 1]);
+}
+
+export function buildCoves(b: Build, ceiling: THREE.Group): void {
+  for (const c of coves) {
+    if (c.kind === 'trough') trough(b, c, ceiling);
+    else washSlot(b, c, ceiling);
+  }
+}

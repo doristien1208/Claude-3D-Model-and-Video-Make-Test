@@ -163,6 +163,19 @@ function windowUnit(b: Build, spec: WindowSpec, ceiling: THREE.Group): void {
       b.box(R(from + 2, to - 2, CURTAIN_BOX.sheerTrack - 1, CURTAIN_BOX.sheerTrack + 1), 2.76, 2.78, mat.alu),
       b.box(R(from + 2, to - 2, CURTAIN_BOX.mainTrack - 1, CURTAIN_BOX.mainTrack + 1), 2.76, 2.78, mat.alu),
     ]) ceiling.add(me);
+
+    // 洗簾燈：盒內前緣的燈條往下照布簾（Panasonic：燈具離牆 200–230 mm）。夜間才開，用面光源讓褶子有光影
+    const W = CURTAIN_BOX.washLight;
+    const led = b.box(R(from + 3, to - 3, W - 1, W + 1), 2.775, 2.785, mat.glow, { cast: false });
+    b.glow.push(led);
+    ceiling.add(led);
+    const len = (to - from - 6) / 100;
+    const light = new THREE.RectAreaLight(0xffb978, 0, len, 0.03);
+    const [cx, cy] = f.hor ? [(from + to) / 2, ci + σ * W] : [ci + σ * W, (from + to) / 2];
+    light.position.set(X(cx), 2.77, Z(cy));
+    light.rotation.set(-Math.PI / 2, f.hor ? 0 : Math.PI / 2, 0, 'YXZ');
+    b.root.add(light);
+    b.areaLights.push({ light, intensity: 300 });
   }
 }
 

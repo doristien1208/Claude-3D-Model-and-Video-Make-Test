@@ -160,8 +160,8 @@ export const windowSpecs: readonly WindowSpec[] = [
   { opening: 'win-living', type: 'fixed', sill: 'stone', curtainBox: { from: 264, to: 470 } },
 ];
 
-/** 窗簾盒：雙層蛇形簾需要 25 cm 深；紗簾軌道離牆 8 cm、布簾軌道 17 cm */
-export const CURTAIN_BOX = { depth: 25, h0: 2.6, sheerTrack: 8, mainTrack: 17 };
+/** 窗簾盒：雙層蛇形簾需要 25 cm 深；紗簾軌道離牆 8 cm、布簾軌道 17 cm；盒內前緣有往下照布簾的洗簾燈（離牆 21 cm） */
+export const CURTAIN_BOX = { depth: 25, h0: 2.6, sheerTrack: 8, mainTrack: 17, washLight: 21 };
 
 /* ---------- 收邊 ---------- */
 
@@ -436,9 +436,84 @@ export const lighting = {
     { at: [517, 1095], h: 1.85, intensity: 5, distance: 2.4 },
     { at: [517, 1225], h: 1.85, intensity: 5, distance: 2.4 },
   ] as readonly NightLight[],
-  /** 天花板間接光（發光線條） */
-  coves: [
-    { id: 'living-sofa-side', rect: [500, 560, 506, 840] as Rect, h: [2.74, 2.76] as HRange },
-    { id: 'tv-wall-wash', rect: [1023, 472, 1028, 743] as Rect, h: [2.74, 2.76] as HRange },
-  ],
 };
+
+/* ---------- 天花板：局部降板與間接燈（2026-10 確認：中央維持 2.80 m，降板下緣 2.60 m 與窗簾盒對齊） ---------- */
+
+/** 降板下緣高度（m） */
+export const BULKHEAD_H = 2.6;
+
+/**
+ * 牆面以 face（牆面座標，px）＋ hor（牆沿 x 方向）＋ into（往室內的方向）描述，沿牆範圍 from–to。
+ * trough：跌級燈溝，降板寬 width，內緣擋光板比板面高 3 cm，燈溝開口約 15 cm；cap 為需要封板的自由端。
+ * washSlot：洗牆燈溝，降板總深 depth（與窗簾盒前緣對齊），貼牆留 slot 寬的縫，燈光沿 litFace（被照的面）往下打。
+ */
+export type Cove =
+  | { id: string; kind: 'trough'; face: number; hor: boolean; into: 1 | -1; from: number; to: number; width: number; cap?: 'from' | 'to' }
+  | { id: string; kind: 'washSlot'; face: number; hor: boolean; into: 1 | -1; from: number; to: number; depth: number; slot: number;
+      litFace: number; cap?: 'from' | 'to' };
+
+export const coves: readonly Cove[] = [
+  // 客廳沙發側（x490 牆東面），到公衛北牆為止；北端是自由端
+  { id: 'living-sofa', kind: 'trough', face: 495.5, hor: false, into: 1, from: 540, to: 884.5, width: 30, cap: 'from' },
+  // 電視木格柵牆：從客廳窗簾盒接過來，到展示書櫃為止；格柵面在 x 1031
+  { id: 'tv-wall', kind: 'washSlot', face: 1039, hor: false, into: -1, from: 470, to: 752, depth: 25, slot: 10, litFace: 1031, cap: 'to' },
+];
+
+/* ---------- 開關插座與牆面設備 ---------- */
+
+/**
+ * 參考 Panasonic RISNA（橫式 120 × 70 × 9 mm）；高度依屋內線路裝置規則與設計師慣例：
+ * 門邊開關 1.2 m、離門框 15–20 cm、在門把側；一般插座 0.3 m；床頭 0.6 m；廚房檯面 1.1 m（離水槽、爐台 ≥ 30 cm）；
+ * 浴室吹風機插座 1.15 m、離龍頭 ≥ 60 cm、加防水蓋；對講機 1.45 m。
+ * at 為裝在牆面上的位置（px），facing 為面板朝向；finish：灰泥牆用霧白、木作與櫃體上用深灰。
+ */
+export interface WallDevice {
+  id: string;
+  kind: 'switch' | 'socket' | 'socketUsb' | 'socketWet' | 'floorSocket' | 'intercom';
+  gangs?: number;
+  at: Pt;
+  facing: Side;
+  h: number;
+  finish: 'white' | 'dark';
+}
+
+export const wallDevices: readonly WallDevice[] = [
+  // 主臥：門把側到轉角只有 2 cm，開關改在南牆、離轉角 18 cm
+  { id: 'mbed-sw', kind: 'switch', gangs: 2, at: [466.5, 560], facing: 'N', h: 1.2, finish: 'white' },
+  { id: 'mbed-bed-W', kind: 'socketUsb', at: [102, 307.5], facing: 'S', h: 0.6, finish: 'dark' },
+  { id: 'mbed-bed-E', kind: 'socketUsb', at: [337, 307.5], facing: 'S', h: 0.6, finish: 'dark' },
+  { id: 'mbed-low', kind: 'socket', at: [420, 560], facing: 'N', h: 0.3, finish: 'white' },
+  // 主衛浴：臥室側門把旁只剩 5 cm，開關（燈、暖風機、排風）裝在床頭格柵牆上、離門洞 15 cm
+  { id: 'mbath-sw', kind: 'switch', gangs: 3, at: [385, 307.5], facing: 'S', h: 1.2, finish: 'dark' },
+  { id: 'mbath-dryer', kind: 'socketWet', at: [484, 165], facing: 'W', h: 1.15, finish: 'white' },
+  { id: 'mbath-bidet', kind: 'socket', at: [362, 132], facing: 'S', h: 0.3, finish: 'white' },
+  // 書房：書桌不靠牆，用地板插座
+  { id: 'study-sw', kind: 'switch', gangs: 2, at: [484.5, 667], facing: 'W', h: 1.2, finish: 'white' },
+  { id: 'study-floor', kind: 'floorSocket', at: [300, 745], facing: 'N', h: 0, finish: 'dark' },
+  { id: 'study-low', kind: 'socket', at: [484.5, 720], facing: 'W', h: 0.3, finish: 'white' },
+  // 客房：門把側只有 8 cm 就碰到衣櫃、鉸鏈側會被門片擋住，開關裝在衣櫃靠門的側板上
+  { id: 'guest-sw', kind: 'switch', gangs: 2, at: [455, 1035], facing: 'N', h: 1.2, finish: 'dark' },
+  { id: 'guest-bed-W', kind: 'socketUsb', at: [129, 945], facing: 'S', h: 0.6, finish: 'white' },
+  { id: 'guest-bed-E', kind: 'socketUsb', at: [346, 945], facing: 'S', h: 0.6, finish: 'white' },
+  { id: 'guest-low', kind: 'socket', at: [220, 1274], facing: 'N', h: 0.3, finish: 'white' },
+  // 玄關：大門門把側整面是鞋櫃（正面是櫃門），開關（玄關、客廳、餐廳、間接燈）與對講機改裝在鞋櫃旁露出的實牆量體南面
+  // （x 887–930），離大門約 1.2 m
+  { id: 'entry-sw-1', kind: 'switch', gangs: 3, at: [902, 1154], facing: 'S', h: 1.2, finish: 'white' },
+  { id: 'entry-sw-2', kind: 'switch', gangs: 3, at: [916, 1154], facing: 'S', h: 1.2, finish: 'white' },
+  { id: 'entry-intercom', kind: 'intercom', at: [909, 1154], facing: 'S', h: 1.45, finish: 'white' },
+  { id: 'entry-low', kind: 'socket', at: [850, 1274], facing: 'N', h: 0.3, finish: 'white' },
+  // 客廳：落地燈插座
+  { id: 'living-low', kind: 'socket', at: [495.5, 700], facing: 'E', h: 0.3, finish: 'white' },
+  // 廚房、餐廳：開關（吊燈、廚房燈、陽台燈）在主臥門北側牆上；檯面插座避開窗與水槽、爐台
+  { id: 'kitchen-sw', kind: 'switch', gangs: 3, at: [495.5, 420], facing: 'E', h: 1.2, finish: 'white' },
+  { id: 'kitchen-counter', kind: 'socket', at: [538, 131], facing: 'S', h: 1.1, finish: 'white' },
+  { id: 'kitchen-splash', kind: 'socket', at: [690, 131], facing: 'S', h: 0.97, finish: 'white' },
+  { id: 'island', kind: 'socket', at: [833, 324], facing: 'E', h: 0.6, finish: 'dark' },
+  // 客房前走廊、公衛、儲藏室
+  { id: 'hall-sw', kind: 'switch', gangs: 1, at: [596, 905], facing: 'W', h: 1.2, finish: 'white' },
+  { id: 'bath-sw', kind: 'switch', gangs: 2, at: [596, 1030], facing: 'W', h: 1.2, finish: 'white' },
+  { id: 'bath-dryer', kind: 'socketWet', at: [770, 915], facing: 'W', h: 1.15, finish: 'white' },
+  { id: 'bath-bidet', kind: 'socket', at: [770, 935], facing: 'W', h: 0.3, finish: 'white' },
+  { id: 'storage-sw', kind: 'switch', gangs: 1, at: [596, 1240], facing: 'W', h: 1.2, finish: 'white' },
+];

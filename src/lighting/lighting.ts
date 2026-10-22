@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { X, Z } from '../core/units';
 import { lighting } from '../data/layout';
 import type { Mat } from '../materials/library';
@@ -8,13 +9,13 @@ export const PRESETS = {
   day: {
     hemi: { sky: 0xdfe6ea, ground: 0x6e6052, intensity: 1.15 },
     sun: true, nightLights: false,
-    glow: 0.25, glowSoft: 0.08,
+    glow: 0.25, glowSoft: 0.08, coveGlow: 0.04, areaLights: false,
     background: 0xc9d2d6, outside: 0xa29d93, exposure: 1.0,
   },
   night: {
     hemi: { sky: 0x8090a8, ground: 0x2a2420, intensity: 0.12 },
     sun: false, nightLights: true,
-    glow: 3, glowSoft: 1.2,
+    glow: 3, glowSoft: 1.2, coveGlow: 0.55, areaLights: true,
     background: 0x12151a, outside: 0x1a1b1d, exposure: 1.25,
   },
 } as const;
@@ -27,7 +28,11 @@ export class Lighting {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly mat: Mat;
 
-  constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer, mat: Mat) {
+  private readonly areaLights: readonly { light: THREE.RectAreaLight; intensity: number }[];
+
+  constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer, mat: Mat, areaLights: readonly { light: THREE.RectAreaLight; intensity: number }[] = []) {
+    RectAreaLightUniformsLib.init();
+    this.areaLights = areaLights;
     this.scene = scene;
     this.renderer = renderer;
     this.mat = mat;
@@ -62,6 +67,8 @@ export class Lighting {
     for (const { light, intensity } of this.night) light.intensity = p.nightLights ? intensity : 0;
     this.mat.glow.emissiveIntensity = p.glow;
     this.mat.glowSoft.emissiveIntensity = p.glowSoft;
+    this.mat.coveGlow.opacity = p.coveGlow;
+    for (const { light, intensity } of this.areaLights) light.intensity = p.areaLights ? intensity : 0;
     this.scene.background = new THREE.Color(p.background);
     this.mat.outside.color.set(p.outside);
     this.renderer.toneMappingExposure = p.exposure;
