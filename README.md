@@ -8,8 +8,11 @@
 
 ```bash
 npm install
+npm run fetch:hdri
 npm run dev
 ```
+
+`fetch:hdri` 會從 Poly Haven 下載窗外景觀用的兩張 HDRI（CC0，各約 25 MB）到 `public/hdri/`，不納入版本控制；沒有這兩個檔案時窗外會是純色。
 
 - `http://localhost:5173/`：模型本體（俯瞰／漫遊、日夜、剖切、房間跳轉、小地圖；左側參數面板可開關各扇門）
 - `http://localhost:5173/compare.html`：參考版與新版並排對照（鏡頭同步，也可切換 A/B 疊圖）
