@@ -20,7 +20,7 @@ export const CEILING_H = 2.8;
 
 export const site = {
   /** 樓板範圍（含陽台北牆外凸到 y 118） */
-  floor: [70, 118, 1045, 1280] as Rect,
+  floor: [70, 118, 1095, 1280] as Rect,
   /** 外牆厚度；天花板會向外多蓋半個牆厚 */
   extWallT: 12,
 };
@@ -53,16 +53,16 @@ export const walls: readonly Wall[] = [
     { id: 'win-mbath', s: 95, e: 235, bot: 1.5, top: 2.1, kind: 'window' },
     { id: 'win-kitchen', s: 548, e: 712, bot: 1.05, top: 2.1, kind: 'window' },
   ] },
-  { id: 'ext-N-balcony', a: [835, 118], b: [1045, 118], t: 12, openings: [
-    { id: 'rail-balcony-N', s: 845, e: 1035, bot: 1.05, top: CEILING_H, kind: 'rail' },
+  { id: 'ext-N-balcony', a: [835, 118], b: [1095, 118], t: 12, openings: [
+    { id: 'rail-balcony-N', s: 845, e: 1085, bot: 1.05, top: CEILING_H, kind: 'rail' },
   ] },
   { id: 'ext-W', a: [70, 125], b: [70, 1280], t: 12, openings: [
     { id: 'win-mbed', s: 390, e: 520, bot: 0.9, top: 2.3, kind: 'window' },
     { id: 'win-study', s: 625, e: 825, bot: 1.1, top: 2.3, kind: 'window' },
     { id: 'win-guest', s: 1000, e: 1140, bot: 0.9, top: 2.3, kind: 'window' },
   ] },
-  { id: 'ext-S', a: [70, 1280], b: [1045, 1280], t: 12 },
-  { id: 'ext-E', a: [1045, 118], b: [1045, 1280], t: 12, openings: [
+  { id: 'ext-S', a: [70, 1280], b: [1095, 1280], t: 12 },
+  { id: 'ext-E', a: [1095, 118], b: [1095, 1280], t: 12, openings: [
     { id: 'rail-balcony-E', s: 132, e: 250, bot: 1.05, top: CEILING_H, kind: 'rail' },
     // 客廳窗原為 305–485，與電視格柵牆（470 起）重疊 15 cm，2026-10 確認縮短為 305–470
     { id: 'win-living', s: 305, e: 470, bot: 0.45, top: 2.5, kind: 'window' },
@@ -70,8 +70,8 @@ export const walls: readonly Wall[] = [
   ] },
   // 內牆
   { id: 'kitchen-balcony', a: [835, 125], b: [835, 260], t: 10 },
-  { id: 'balcony-S', a: [835, 260], b: [1045, 260], t: 8, openings: [
-    { id: 'door-balcony', s: 850, e: 1040, bot: 0, top: 2.3, kind: 'door' },
+  { id: 'balcony-S', a: [835, 260], b: [1095, 260], t: 8, openings: [
+    { id: 'door-balcony', s: 850, e: 1090, bot: 0, top: 2.3, kind: 'door' },
   ] },
   { id: 'x490', a: [490, 125], b: [490, 1280], t: 11, openings: [
     { id: 'door-mbed', s: 487, e: 558, bot: 0, top: 2.1, kind: 'door' },
@@ -83,20 +83,20 @@ export const walls: readonly Wall[] = [
   { id: 'mbath-mbed', a: [70, 300], b: [490, 300], t: 9, openings: [
     { id: 'door-mbath', s: 400, e: 480, bot: 0, top: 2.1, kind: 'door' },
   ] },
-  { id: 'bath-N', a: [600, 889], b: [775, 889], t: 9 },
-  { id: 'x600', a: [600, 889], b: [600, 1280], t: 8, openings: [
+  { id: 'bath-N', a: [630, 889], b: [805, 889], t: 9 },
+  { id: 'x600', a: [630, 889], b: [630, 1280], t: 8, openings: [
     { id: 'door-bath', s: 940, e: 1015, bot: 0, top: 2.1, kind: 'door' },
     { id: 'door-storage', s: 1145, e: 1220, bot: 0, top: 2.1, kind: 'door' },
   ] },
-  { id: 'x775', a: [775, 889], b: [775, 1280], t: 9 },
-  { id: 'bath-storage', a: [600, 1135], b: [775, 1135], t: 9 },
+  { id: 'x775', a: [805, 889], b: [805, 1280], t: 9 },
+  { id: 'bath-storage', a: [630, 1135], b: [805, 1135], t: 9 },
 ];
 
 /** 實牆量體（不可使用，滿高） */
 export const solidBlocks: readonly Rect[] = [
-  [887, 966, 1045, 1127.5],
-  // 南面 x 930–1039 挖進 26.5 cm 給玄關鞋櫃內嵌（2026-10 確認可動用此量體）
-  [887, 1127.5, 930, 1154],
+  [937, 966, 1095, 1127.5],
+  // 南面 x 980–1089 挖進 26.5 cm 給玄關鞋櫃內嵌（2026-10 確認可動用此量體）
+  [937, 1127.5, 980, 1154],
 ];
 
 /* ---------- 門 ---------- */
@@ -127,10 +127,10 @@ export const doors: readonly Door[] = [
   { id: 'bath', label: '公用衛浴', kind: 'swing', opening: 'door-bath', hinge: 'start', swing: 'E', leafT: 4, material: 'walnut', open: 1, threshold: true },
   // 大門：鉸鏈在南端，往室內開（2026-10 確認）
   { id: 'main', label: '大門', kind: 'swing', opening: 'door-main', hinge: 'end', swing: 'W', leafT: 5, material: 'door', open: 0, threshold: true },
-  // 儲藏室外掛拉門：門片在走廊側（x 591–595），開啟時往北滑到 y 1067–1146
+  // 儲藏室外掛拉門：門片在走廊側（x 621–625），開啟時往北滑到 y 1067–1146
   { id: 'storage', label: '儲藏室', kind: 'slide', opening: 'door-storage', side: 'W', slideTo: 'start', leafT: 4, gap: 1, overlap: 2, travel: 76, open: 1 },
-  // 陽台兩片落地拉門：固定片 x 852–947，活動片全開時 x 862–957
-  { id: 'balcony', label: '陽台', kind: 'slideGlass', opening: 'door-balcony', wallY: 260, fixed: [852, 947], active: [862, 957], trackEnd: 1040, h: 2.3, open: 1 },
+  // 陽台兩片落地拉門（陽台加寬後開口 850–1090）：固定片 x 852–972，活動片全開時 x 862–982
+  { id: 'balcony', label: '陽台', kind: 'slideGlass', opening: 'door-balcony', wallY: 260, fixed: [852, 972], active: [862, 982], trackEnd: 1090, h: 2.3, open: 1 },
 ];
 
 /* ---------- 窗 ---------- */
@@ -188,13 +188,13 @@ export const spaces: readonly Space[] = [
   { id: 'study', name: '書房', rect: [70, 565, 490, 940] },
   { id: 'guest', name: '客房', rect: [70, 940, 490, 1280] },
   { id: 'kitchen', name: '廚房＋中島', rect: [490, 125, 835, 420] },
-  { id: 'balcony', name: '小陽台', rect: [835, 118, 1045, 260] },
-  { id: 'living', name: '客廳', rect: [490, 420, 1045, 910] },
-  { id: 'hall-guest', name: '客房前走廊', rect: [490, 889, 600, 1280] },
-  { id: 'bath', name: '公用衛浴', rect: [600, 889, 775, 1135] },
-  { id: 'storage', name: '儲藏室', rect: [600, 1135, 775, 1280] },
-  { id: 'hall-short', name: '短走廊', rect: [775, 905, 887, 1160] },
-  { id: 'entry', name: '玄關', rect: [775, 1160, 1045, 1280] },
+  { id: 'balcony', name: '小陽台', rect: [835, 118, 1095, 260] },
+  { id: 'living', name: '客廳', rect: [490, 420, 1095, 910] },
+  { id: 'hall-guest', name: '客房前走廊', rect: [490, 889, 630, 1280] },
+  { id: 'bath', name: '公用衛浴', rect: [630, 889, 805, 1135] },
+  { id: 'storage', name: '儲藏室', rect: [630, 1135, 805, 1280] },
+  { id: 'hall-short', name: '短走廊', rect: [805, 905, 937, 1160] },
+  { id: 'entry', name: '玄關', rect: [805, 1160, 1095, 1280] },
 ];
 
 /** 房間跳轉的漫遊視點（px；yaw／pitch 為弧度，pitch 省略時用 −0.08） */
@@ -205,17 +205,17 @@ export interface Viewpoint {
   pitch?: number;
 }
 export const viewpoints: readonly Viewpoint[] = [
-  { label: '玄關', at: [915, 1250], yaw: 0.36 },
-  { label: '客廳', at: [930, 455], yaw: 2.45, pitch: -0.12 },
-  { label: '餐廚', at: [960, 475], yaw: 0.9 },
+  { label: '玄關', at: [965, 1250], yaw: 0.36 },
+  { label: '客廳', at: [980, 455], yaw: 2.45, pitch: -0.12 },
+  { label: '餐廚', at: [1010, 475], yaw: 0.9 },
   { label: '主臥', at: [425, 530], yaw: 0.95 },
   { label: '主衛浴', at: [455, 260], yaw: 1.5, pitch: -0.18 },
   { label: '書房', at: [440, 895], yaw: 0.9 },
   { label: '客房', at: [375, 1235], yaw: 0.68 },
-  { label: '公用衛浴', at: [635, 990], yaw: -1.2 },
+  { label: '公用衛浴', at: [665, 990], yaw: -1.2 },
 ];
 /** 進入漫遊時的起始位置 */
-export const walkStart: Viewpoint = { label: '起點', at: [915, 1250], yaw: 0.36, pitch: -0.05 };
+export const walkStart: Viewpoint = { label: '起點', at: [965, 1250], yaw: 0.36, pitch: -0.05 };
 
 /* ---------- 地坪與牆面石材 ---------- */
 
@@ -229,13 +229,13 @@ export interface FloorZone {
 }
 export const floorZones: readonly FloorZone[] = [
   { id: 'mbath', rect: [76, 131, 486, 296], material: 'tileDark', h: 0.006 },
-  { id: 'bath', rect: [604, 893, 771, 1131], material: 'tileDark', h: 0.006 },
-  { id: 'balcony', rect: [839, 122, 1040, 256], material: 'tileLight', h: 0.006 },
-  { id: 'entry', rect: [779, 1158, 887, 1275], material: 'tileDark', h: 0.006 },
+  { id: 'bath', rect: [634, 893, 801, 1131], material: 'tileDark', h: 0.006 },
+  { id: 'balcony', rect: [839, 122, 1090, 256], material: 'tileLight', h: 0.006 },
+  { id: 'entry', rect: [809, 1158, 937, 1275], material: 'tileDark', h: 0.006 },
   // 鞋櫃內嵌後，實牆量體前方直到牆面都是玄關地坪
-  { id: 'entry-E', rect: [887, 1154, 1040, 1275], material: 'tileDark', h: 0.006 },
+  { id: 'entry-E', rect: [937, 1154, 1090, 1275], material: 'tileDark', h: 0.006 },
   { id: 'mbath-wet', rect: [77, 212, 257, 295], material: 'wetFloor', h: 0.012 },
-  { id: 'bath-shower', rect: [605, 1034, 771, 1131], material: 'stone', h: 0.03 },
+  { id: 'bath-shower', rect: [635, 1034, 801, 1131], material: 'stone', h: 0.03 },
 ];
 
 /** 衛浴牆面石材（貼在牆面上的薄片，已扣掉窗與門） */
@@ -251,9 +251,9 @@ export const wallTiles: readonly { rect: Rect; h: HRange }[] = [
   { rect: [400, 294.5, 480, 295.5], h: [2.1, CEILING_H] },
   { rect: [480, 294.5, 484, 295.5], h: [0, CEILING_H] },
   // 公用衛浴
-  { rect: [605, 893.5, 771, 894.5], h: [0, CEILING_H] },
-  { rect: [770, 894, 771, 1131], h: [0, CEILING_H] },
-  { rect: [604, 1130, 771, 1131], h: [0, CEILING_H] },
+  { rect: [635, 893.5, 801, 894.5], h: [0, CEILING_H] },
+  { rect: [800, 894, 801, 1131], h: [0, CEILING_H] },
+  { rect: [634, 1130, 801, 1131], h: [0, CEILING_H] },
 ];
 
 /* ---------- 家具與設備 ---------- */
@@ -468,51 +468,52 @@ export const items: readonly Item[] = [
   { id: 'pendant-3', type: 'pendant', at: [775, 324] },
 
   /* 小陽台 */
-  { id: 'balcony-plant', type: 'plant', at: [980, 192], potR: 0.22, potH: 0.45, leafR: 0.42, leafSY: 1.25, leafY: 0.95 },
+  { id: 'balcony-plant', type: 'plant', at: [1005, 192], potR: 0.22, potH: 0.45, leafR: 0.42, leafSY: 1.25, leafY: 0.95 },
 
   /* 客廳 */
-  { id: 'living-rug', type: 'rug', rect: [578, 568, 936, 838], material: 'rug', inner: [584, 576, 930, 830] },
-  // L 型沙發：長邊 x 592–686（椅背朝西），短邊 x 686–799、y 753–822（椅背朝南）
-  { id: 'sofa', type: 'sofaL', rect: [592, 589, 799, 822] },
-  { id: 'coffee-table', type: 'coffeeTable', at: [798, 676], r: 0.45 },
-  { id: 'armchair', type: 'armchair', at: [892, 808.5], faceTo: [798, 676] },
-  { id: 'floor-lamp', type: 'floorLamp', at: [705, 597] },
-  { id: 'tv-slat', type: 'slatWall', rect: [1031, 470, 1039, 745] },
+  { id: 'living-rug', type: 'rug', rect: [618, 568, 976, 838], material: 'rug', inner: [624, 576, 970, 830] },
+  // L 型沙發：長邊 x 622–716（椅背朝西），短邊 x 716–829、y 753–822（椅背朝南）；房子加寬後往東移 30 cm，
+  // 椅背到書房門那面牆的走道 126.5 cm
+  { id: 'sofa', type: 'sofaL', rect: [622, 589, 829, 822] },
+  { id: 'coffee-table', type: 'coffeeTable', at: [838, 676], r: 0.45 },
+  { id: 'armchair', type: 'armchair', at: [942, 808.5], faceTo: [838, 676] },
+  { id: 'floor-lamp', type: 'floorLamp', at: [735, 597] },
+  { id: 'tv-slat', type: 'slatWall', rect: [1081, 470, 1089, 745] },
   // 客廳窗南端緊貼電視牆，窗簾只能往北收；布簾收起時會擋住約 20 cm 的玻璃（已確認）
   // 軌道從 y 268 起，避開陽台拉門的門框（到 y 267）
   { id: 'living-curtains', type: 'curtains', label: '客廳', window: 'win-living', sides: 'start', span: [268, 468] },
   // 懸浮電視櫃：按壓開門、底部間接光
-  { id: 'tv-cabinet', type: 'cabinet', rect: [987, 520, 1031, 710], h: [0.18, 0.5], front: 'W', underGlow: true, fronts: [
+  { id: 'tv-cabinet', type: 'cabinet', rect: [1037, 520, 1081, 710], h: [0.18, 0.5], front: 'W', underGlow: true, fronts: [
     { from: 520, to: 710, h: [0.18, 0.5], n: 4, kind: 'door', handle: 'push' },
   ] },
-  { id: 'tv', type: 'tv', rect: [1027, 549, 1030.5, 692], h: [0.95, 1.76] },
+  { id: 'tv', type: 'tv', rect: [1077, 549, 1080.5, 692], h: [0.95, 1.76] },
   // 展示角：高書櫃貼東牆，矮櫃貼實牆，接成 L 型
-  { id: 'display-shelf', type: 'shelf', rect: [1003, 752, 1039, 966], h: 2.2, shelves: 6, back: 'E', seed: 41 },
-  { id: 'display-low', type: 'cabinet', rect: [891, 923, 1003, 966], h: [0, 0.75], front: 'N', plinth: 0.04, fronts: [
-    { from: 891, to: 1003, h: [0.04, 0.75], n: 4, kind: 'door', handle: 'push' },
+  { id: 'display-shelf', type: 'shelf', rect: [1053, 752, 1089, 966], h: 2.2, shelves: 6, back: 'E', seed: 41 },
+  { id: 'display-low', type: 'cabinet', rect: [941, 923, 1053, 966], h: [0, 0.75], front: 'N', plinth: 0.04, fronts: [
+    { from: 941, to: 1053, h: [0.04, 0.75], n: 4, kind: 'door', handle: 'push' },
   ] },
-  { id: 'display-vase', type: 'vase', at: [930, 945], r: 0.06, h: [0.75, 0.95] },
+  { id: 'display-vase', type: 'vase', at: [980, 945], r: 0.06, h: [0.75, 0.95] },
   { id: 'mbed-door-plant', type: 'plant', at: [510, 455], potR: 0.17, potH: 0.42, leafR: 0.3, leafSY: 1.6, leafY: 0.9 },
 
   /* 公用衛浴與儲藏室 */
   // 61 cm 洗手台檯面太淺放不下檯面龍頭：下嵌盆 460 × 390（凱撒 L5115）＋入牆龍頭（hansgrohe Talis E 壁式，出水 225）
-  { id: 'bath-vanity', type: 'vanity', rect: [609, 894.5, 670, 940], front: 'S',
-    fronts: [{ from: 609, to: 670, h: [0.5, 0.83], n: 1, kind: 'door', handle: 'push' }],
-    basin: [616.5, 897.5, 662.5, 936.5], basinType: 'undermount', faucet: { at: [639.5, 894.5], mount: 'wall', h: 0.99 },
-    mirror: [610, 894.5, 670, 896], mirrorH: [1.05, 1.9] },
-  { id: 'bath-soap', type: 'bathAccessory', kind: 'pumpBottle', at: [665, 905], h: 0.85 },
+  { id: 'bath-vanity', type: 'vanity', rect: [639, 894.5, 700, 940], front: 'S',
+    fronts: [{ from: 639, to: 700, h: [0.5, 0.83], n: 1, kind: 'door', handle: 'push' }],
+    basin: [646.5, 897.5, 692.5, 936.5], basinType: 'undermount', faucet: { at: [669.5, 894.5], mount: 'wall', h: 0.99 },
+    mirror: [640, 894.5, 700, 896], mirrorH: [1.05, 1.9] },
+  { id: 'bath-soap', type: 'bathAccessory', kind: 'pumpBottle', at: [695, 905], h: 0.85 },
   // 洗手台旁西牆只有 46 cm 又被門切斷，毛巾桿改裝在鏡子與水箱半牆之間的北牆（30 cm）
-  { id: 'bath-towel-bar', type: 'towelBar', at: [689.5, 894.5], facing: 'S', len: 30, h: 1.2, towels: [{ kind: 'hand', at: 0, color: 'oat' }] },
+  { id: 'bath-towel-bar', type: 'towelBar', at: [719.5, 894.5], facing: 'S', len: 30, h: 1.2, towels: [{ kind: 'hand', at: 0, color: 'oat' }] },
   // 隱藏水箱半牆：薄型框架（Geberit Duofix 8 cm 水箱）＋磁磚共 11 cm，馬桶南移 4.5 cm（2026-10 確認）
-  { id: 'bath-wc', type: 'toilet', tank: [709, 894.5, 749, 904.5], tankH: [0, 1.1], tankMaterial: 'tile', bowl: [710, 904.5, 748, 958.5], facing: 'S' },
-  { id: 'bath-paper', type: 'paperHolder', at: [770, 980], facing: 'W', h: 0.66 },
-  { id: 'bath-screen', type: 'glassScreen', rect: [605, 1034, 715, 1035], h: 2.0, base: 0.03 },
-  { id: 'bath-valve', type: 'showerValve', at: [725, 1130], facing: 'N', h: 1.1, hand: { at: [748, 1130], h: 1.22 } },
-  { id: 'bath-head', type: 'showerHead', head: [725, 1110], from: [725, 1130], size: 0.26, h: 2.2 },
-  { id: 'bath-drain', type: 'linearDrain', rect: [643, 1124.5, 733, 1128.8], h: 0.03 },
-  { id: 'storage-shelf', type: 'shelf', rect: [712, 1149, 758, 1266], h: 2.2, shelves: 5, back: 'E', seed: 51 },
-  { id: 'storage-box-1', type: 'storageBox', rect: [654, 1220, 702, 1246], h: 0.3 },
-  { id: 'storage-box-2', type: 'storageBox', rect: [656, 1250, 701, 1271], h: 0.25 },
+  { id: 'bath-wc', type: 'toilet', tank: [739, 894.5, 779, 904.5], tankH: [0, 1.1], tankMaterial: 'tile', bowl: [740, 904.5, 778, 958.5], facing: 'S' },
+  { id: 'bath-paper', type: 'paperHolder', at: [800, 980], facing: 'W', h: 0.66 },
+  { id: 'bath-screen', type: 'glassScreen', rect: [635, 1034, 745, 1035], h: 2.0, base: 0.03 },
+  { id: 'bath-valve', type: 'showerValve', at: [755, 1130], facing: 'N', h: 1.1, hand: { at: [778, 1130], h: 1.22 } },
+  { id: 'bath-head', type: 'showerHead', head: [755, 1110], from: [755, 1130], size: 0.26, h: 2.2 },
+  { id: 'bath-drain', type: 'linearDrain', rect: [673, 1124.5, 763, 1128.8], h: 0.03 },
+  { id: 'storage-shelf', type: 'shelf', rect: [742, 1149, 788, 1266], h: 2.2, shelves: 5, back: 'E', seed: 51 },
+  { id: 'storage-box-1', type: 'storageBox', rect: [684, 1220, 732, 1246], h: 0.3 },
+  { id: 'storage-box-2', type: 'storageBox', rect: [686, 1250, 731, 1271], h: 0.25 },
   // 客房前走廊壁燈：裝在客房側牆面，上下洗牆
   { id: 'hall-sconce-1', type: 'sconce', at: [495.5, 1095], h: [1.6, 2.0] },
   { id: 'hall-sconce-2', type: 'sconce', at: [495.5, 1225], h: [1.6, 2.0] },
@@ -520,10 +521,10 @@ export const items: readonly Item[] = [
   /* 玄關 */
   // 玄關鞋櫃：嵌進實牆量體、正面與牆面齊平（2026-10 確認）；懸空 15 cm＋底部間接光；中段開放層格放鑰匙，
   // 上下櫃門從層格伸手開（深 26.5 cm 只放得下斜放鞋架）；上櫃做到天花
-  { id: 'shoe-cabinet', type: 'cabinet', rect: [930, 1127.5, 1039, 1154], h: [0.15, 2.8], front: 'S', underGlow: true, fronts: [
-    { from: 930, to: 1039, h: [0.15, 0.95], n: 3, kind: 'door', handle: 'grip' },
-    { from: 930, to: 1039, h: [0.95, 1.2], n: 1, kind: 'open', led: true },
-    { from: 930, to: 1039, h: [1.2, 2.8], n: 3, kind: 'door', handle: 'grip' },
+  { id: 'shoe-cabinet', type: 'cabinet', rect: [980, 1127.5, 1089, 1154], h: [0.15, 2.8], front: 'S', underGlow: true, fronts: [
+    { from: 980, to: 1089, h: [0.15, 0.95], n: 3, kind: 'door', handle: 'grip' },
+    { from: 980, to: 1089, h: [0.95, 1.2], n: 1, kind: 'open', led: true },
+    { from: 980, to: 1089, h: [1.2, 2.8], n: 3, kind: 'door', handle: 'grip' },
   ] },
 ];
 
@@ -542,15 +543,15 @@ export interface NightLight {
 export const lighting = {
   /** 天花板崁燈 */
   downlights: [
-    [600, 230], [760, 230], [640, 560], [832, 560], [640, 790], [852, 820], [833, 1000], [833, 1100], [915, 1225],
+    [600, 230], [760, 230], [670, 560], [872, 560], [670, 790], [902, 820], [873, 1000], [873, 1100], [965, 1225],
     [230, 470], [370, 470], [170, 250], [380, 230], [200, 640], [380, 640], [200, 860], [380, 860], [230, 1210],
-    [390, 1200], [685, 960], [685, 1080], [665, 1200], [945, 190],
+    [390, 1200], [715, 960], [715, 1080], [695, 1200], [970, 190],
   ] as readonly Pt[],
   /** 夜間 2700K 暖光點光源（目前沒有陰影） */
   night: [
-    { at: [740, 570], h: 2.3, intensity: 22, distance: 5 },
-    { at: [925, 650], h: 2.45, intensity: 12, distance: 3.5 },
-    { at: [705, 597], h: 1.55, intensity: 7, distance: 3.5 },
+    { at: [780, 570], h: 2.3, intensity: 22, distance: 5 },
+    { at: [975, 650], h: 2.45, intensity: 12, distance: 3.5 },
+    { at: [735, 597], h: 1.55, intensity: 7, distance: 3.5 },
     { at: [710, 324], h: 1.75, intensity: 10, distance: 3.5 },
     { at: [650, 200], h: 2.3, intensity: 9, distance: 3.5 },
     { at: [230, 430], h: 2.2, intensity: 11, distance: 3.5 },
@@ -558,11 +559,11 @@ export const lighting = {
     { at: [380, 220], h: 2.4, intensity: 6, distance: 2.4 },
     { at: [290, 720], h: 2.2, intensity: 11, distance: 3.5 },
     { at: [240, 1080], h: 2.2, intensity: 10, distance: 3.5 },
-    { at: [685, 990], h: 2.4, intensity: 6, distance: 2.2 },
-    { at: [833, 1050], h: 2.4, intensity: 6, distance: 3 },
-    { at: [925, 1220], h: 2.4, intensity: 7, distance: 2.6 },
-    { at: [945, 190], h: 2.4, intensity: 3, distance: 2.5 },
-    { at: [705, 1210], h: 2.3, intensity: 3, distance: 1.6 },
+    { at: [715, 990], h: 2.4, intensity: 6, distance: 2.2 },
+    { at: [873, 1050], h: 2.4, intensity: 6, distance: 3 },
+    { at: [975, 1220], h: 2.4, intensity: 7, distance: 2.6 },
+    { at: [970, 190], h: 2.4, intensity: 3, distance: 2.5 },
+    { at: [735, 1210], h: 2.3, intensity: 3, distance: 1.6 },
     { at: [517, 1095], h: 1.85, intensity: 5, distance: 2.4 },
     { at: [517, 1225], h: 1.85, intensity: 5, distance: 2.4 },
   ] as readonly NightLight[],
@@ -586,8 +587,8 @@ export type Cove =
 export const coves: readonly Cove[] = [
   // 客廳沙發側（x490 牆東面），到公衛北牆為止；北端是自由端
   { id: 'living-sofa', kind: 'trough', face: 495.5, hor: false, into: 1, from: 540, to: 884.5, width: 30, cap: 'from' },
-  // 電視木格柵牆：從客廳窗簾盒接過來，到展示書櫃為止；格柵面在 x 1031
-  { id: 'tv-wall', kind: 'washSlot', face: 1039, hor: false, into: -1, from: 470, to: 752, depth: 25, slot: 10, litFace: 1031, cap: 'to' },
+  // 電視木格柵牆：從客廳窗簾盒接過來，到展示書櫃為止；格柵面在 x 1081
+  { id: 'tv-wall', kind: 'washSlot', face: 1089, hor: false, into: -1, from: 470, to: 752, depth: 25, slot: 10, litFace: 1081, cap: 'to' },
 ];
 
 /* ---------- 環境反射探針 ---------- */
@@ -598,17 +599,17 @@ export const coves: readonly Cove[] = [
  * probe 可指定拍攝位置：箱型投影假設環境都在外框牆面上，探針太靠近物件時，物件會被投影成一大塊（例如玻璃隔屏上映出馬桶的暗影）。
  */
 export const probeZones: readonly { id: string; rect: Rect; probe?: Pt }[] = [
-  { id: 'great', rect: [495.5, 131, 1039, 884.5] },
-  { id: 'balcony', rect: [839, 124, 1039, 256] },
+  { id: 'great', rect: [495.5, 131, 1089, 884.5] },
+  { id: 'balcony', rect: [839, 124, 1089, 256] },
   // 區域中心離馬桶只有 10 cm，改到乾區中央
   { id: 'mbath', rect: [76, 131, 484.5, 295.5], probe: [420, 240] },
   { id: 'mbed', rect: [76, 304.5, 484.5, 560] },
   { id: 'study', rect: [76, 570, 484.5, 935] },
   { id: 'guest', rect: [76, 945, 484.5, 1274] },
-  { id: 'hall-guest', rect: [495.5, 889, 596, 1274] },
-  { id: 'bath', rect: [604, 893.5, 770.5, 1130.5] },
-  { id: 'storage', rect: [604, 1139.5, 770.5, 1274] },
-  { id: 'entry', rect: [779.5, 905, 1039, 1274] },
+  { id: 'hall-guest', rect: [495.5, 889, 626, 1274] },
+  { id: 'bath', rect: [634, 893.5, 800.5, 1130.5] },
+  { id: 'storage', rect: [634, 1139.5, 800.5, 1274] },
+  { id: 'entry', rect: [809.5, 905, 1089, 1274] },
 ];
 
 /* ---------- 開關插座與牆面設備 ---------- */
@@ -649,11 +650,11 @@ export const wallDevices: readonly WallDevice[] = [
   { id: 'guest-bed-E', kind: 'socketUsb', at: [346, 945], facing: 'S', h: 0.6, finish: 'white' },
   { id: 'guest-low', kind: 'socket', at: [220, 1274], facing: 'N', h: 0.3, finish: 'white' },
   // 玄關：大門門把側整面是鞋櫃（正面是櫃門），開關（玄關、客廳、餐廳、間接燈）與對講機改裝在鞋櫃旁露出的實牆量體南面
-  // （x 887–930），離大門約 1.2 m
-  { id: 'entry-sw-1', kind: 'switch', gangs: 3, at: [902, 1154], facing: 'S', h: 1.2, finish: 'white' },
-  { id: 'entry-sw-2', kind: 'switch', gangs: 3, at: [916, 1154], facing: 'S', h: 1.2, finish: 'white' },
-  { id: 'entry-intercom', kind: 'intercom', at: [909, 1154], facing: 'S', h: 1.45, finish: 'white' },
-  { id: 'entry-low', kind: 'socket', at: [850, 1274], facing: 'N', h: 0.3, finish: 'white' },
+  // （x 937–980），離大門約 1.2 m
+  { id: 'entry-sw-1', kind: 'switch', gangs: 3, at: [952, 1154], facing: 'S', h: 1.2, finish: 'white' },
+  { id: 'entry-sw-2', kind: 'switch', gangs: 3, at: [966, 1154], facing: 'S', h: 1.2, finish: 'white' },
+  { id: 'entry-intercom', kind: 'intercom', at: [959, 1154], facing: 'S', h: 1.45, finish: 'white' },
+  { id: 'entry-low', kind: 'socket', at: [893, 1274], facing: 'N', h: 0.3, finish: 'white' },
   // 客廳：落地燈插座
   { id: 'living-low', kind: 'socket', at: [495.5, 700], facing: 'E', h: 0.3, finish: 'white' },
   // 廚房、餐廳：開關（吊燈、廚房燈、陽台燈）在主臥門北側牆上；檯面插座避開窗與水槽、爐台
@@ -662,9 +663,9 @@ export const wallDevices: readonly WallDevice[] = [
   { id: 'kitchen-splash', kind: 'socket', at: [690, 132], facing: 'S', h: 0.97, finish: 'white' },
   { id: 'island', kind: 'socket', at: [833, 324], facing: 'E', h: 0.6, finish: 'dark' },
   // 客房前走廊、公衛、儲藏室
-  { id: 'hall-sw', kind: 'switch', gangs: 1, at: [596, 905], facing: 'W', h: 1.2, finish: 'white' },
-  { id: 'bath-sw', kind: 'switch', gangs: 2, at: [596, 1030], facing: 'W', h: 1.2, finish: 'white' },
-  { id: 'bath-dryer', kind: 'socketWet', at: [770, 915], facing: 'W', h: 1.15, finish: 'white' },
-  { id: 'bath-bidet', kind: 'socket', at: [770, 935], facing: 'W', h: 0.3, finish: 'white' },
-  { id: 'storage-sw', kind: 'switch', gangs: 1, at: [596, 1240], facing: 'W', h: 1.2, finish: 'white' },
+  { id: 'hall-sw', kind: 'switch', gangs: 1, at: [626, 905], facing: 'W', h: 1.2, finish: 'white' },
+  { id: 'bath-sw', kind: 'switch', gangs: 2, at: [626, 1030], facing: 'W', h: 1.2, finish: 'white' },
+  { id: 'bath-dryer', kind: 'socketWet', at: [800, 915], facing: 'W', h: 1.15, finish: 'white' },
+  { id: 'bath-bidet', kind: 'socket', at: [800, 935], facing: 'W', h: 0.3, finish: 'white' },
+  { id: 'storage-sw', kind: 'switch', gangs: 1, at: [626, 1240], facing: 'W', h: 1.2, finish: 'white' },
 ];

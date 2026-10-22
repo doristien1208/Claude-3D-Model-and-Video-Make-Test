@@ -40,8 +40,8 @@ export class Lighting {
 
     // 白天：從西南方照入
     const sun = this.sun;
-    sun.position.set(4.875 - 9, 9, 5.8 + 4);
-    sun.target.position.set(4.875, 0, 5.8);
+    sun.position.set(5.125 - 9, 9, 5.8 + 4);
+    sun.target.position.set(5.125, 0, 5.8);
     scene.add(sun, sun.target);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);

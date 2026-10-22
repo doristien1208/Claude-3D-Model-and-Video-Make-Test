@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 export const ORBIT_FOV = 55;
-const TARGET = new THREE.Vector3(4.875, 0.6, 5.8);
+const TARGET = new THREE.Vector3(5.125, 0.6, 5.8);
 
 /** 俯瞰：從東南上方看整間屋子 */
 export function createOrbit(camera: THREE.PerspectiveCamera, dom: HTMLElement) {

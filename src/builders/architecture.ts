@@ -60,7 +60,7 @@ export function buildArchitecture(b: Build): Architecture {
   b.bx(fx1, fy1, fx2, fy2, -0.02, 0, mat.floor, { cast: false });
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), mat.outside);
   ground.rotation.x = -Math.PI / 2;
-  ground.position.set(4.75, -0.03, 5.8);
+  ground.position.set(5.0, -0.03, 5.8);
   ground.receiveShadow = true;
   for (const z of floorZones) b.box(z.rect, 0, z.h, mat[z.material], { cast: false });
   const k = site.extWallT / 2;
