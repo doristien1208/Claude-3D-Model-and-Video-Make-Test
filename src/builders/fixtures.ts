@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Reflector } from 'three/addons/objects/Reflector.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { X, Z } from '../core/units';
 import { CEILING_H as H, type Pt } from '../data/layout';
 import type { ItemOf } from '../data/query';
@@ -152,4 +153,31 @@ export function monitor(b: Build, it: ItemOf<'monitor'>): void {
   b.box(it.rect, 0.92, 1.28, mat.tv);
   b.bx(cx - 3, y2, cx + 3, y2 + 6, 0.76, 0.95, mat.black);
   b.bx(cx - 12, y1 - 8, cx + 12, y1 + 12, 0.76, 0.77, mat.black);
+}
+
+/* ---------- 家電 ---------- */
+
+/**
+ * 獨立式冰箱，參考 Mitsubishi MR-B46F（455 L、600 × 699 × 1821 mm）：上方法式對開門、中段兩個並排小抽屜、
+ * 冷凍抽屜、蔬果抽屜、底部通風格柵；深灰玻璃門板、無外露把手。正面朝南。
+ */
+export function fridge(b: Build, it: ItemOf<'fridge'>): void {
+  const { mat } = b;
+  const [x1, y1, x2, y2] = it.rect, top = it.h, D = 2.5, g = 0.2, gm = 0.002;
+  b.box([x1, y1, x2, y2 - D], 0.06, top, mat.fridgeGlass, { solid: true });
+  b.box([x1 + 1, y1, x2 - 1, y2 - 3], 0, 0.06, mat.gap, { cast: false });
+  const xm = (x1 + x2) / 2;
+  const fronts: [number, number, number, number][] = [
+    [x1, xm, 1.03, top], [xm, x2, 1.03, top],     // 法式對開門
+    [x1, xm, 0.83, 1.03], [xm, x2, 0.83, 1.03],   // 並排小抽屜
+    [x1, x2, 0.48, 0.83],                         // 冷凍抽屜
+    [x1, x2, 0.06, 0.48],                         // 蔬果抽屜
+  ];
+  for (const [a0, a1, h0, h1] of fronts) {
+    const w = (a1 - a0 - 2 * g) / 100, d = D / 100, hh = h1 - h0 - 2 * gm;
+    const me = new THREE.Mesh(new RoundedBoxGeometry(w, hh, d, 2, 0.004), mat.fridgeGlass);
+    me.position.set(X((a0 + a1) / 2), (h0 + h1) / 2, Z(y2 - D / 2));
+    me.castShadow = me.receiveShadow = true;
+    b.root.add(me);
+  }
 }

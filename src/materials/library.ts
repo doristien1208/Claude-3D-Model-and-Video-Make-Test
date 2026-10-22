@@ -117,6 +117,10 @@ export function createMaterials(tex: TextureLibrary) {
     // 門樘陰影縫、嵌入式取手的凹槽
     gap: M({ color: 0x1a1715, roughness: 0.9 }),
     // 深色鋁框（窗、陽台拉門）
+    // 不鏽鋼（水槽）
+    steel: M({ color: 0xc7c9c9, roughness: 0.35, metalness: 1 }),
+    // 冰箱玻璃門板（深灰光面）
+    fridgeGlass: new THREE.MeshPhysicalMaterial({ color: 0x232526, roughness: 0.12, ior: 1.5 }),
     // 深古銅陽極鋁（Tiger Drylac Dark Bronze #4E4542；陽極處理以金屬建模）
     alu: M({ color: 0x4e4542, roughness: 0.3, metalness: 1 }),
     // 窗簾：象牙白麻紗（半透明）、燕麥色布簾；雙面

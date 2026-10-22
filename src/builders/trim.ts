@@ -3,7 +3,7 @@ import { findOpening, isHorizontal } from '../data/query';
 import type { Build } from './prims';
 
 /** 貼牆落地、背後不做踢腳板的物件 */
-const WALL_HUGGING = new Set<Item['type']>(['cabinet', 'kitchenRun', 'shelf', 'shoeCabinet', 'slatWall', 'headboardPanel']);
+const WALL_HUGGING = new Set<Item['type']>(['cabinet', 'kitchenRun', 'shelf', 'fridge', 'slatWall', 'headboardPanel']);
 /** 物件離牆面在這個距離內，就視為貼牆（px） */
 const HUG_TOL = 5;
 
@@ -103,7 +103,8 @@ export function buildBaseboards(b: Build): void {
   const { h, t: T, excludeSpaces } = finishes.baseboard;
   const { pieces, holes } = floorPlan();
   const excluded = spaces.filter((s) => excludeSpaces.includes(s.id)).map((s) => s.rect);
-  const hugging = items.filter((it) => WALL_HUGGING.has(it.type)).map((it) => (it as { rect: Rect }).rect);
+  // 懸空的櫃子（電視櫃、鞋櫃）底下照樣有踢腳板
+  const hugging = items.filter((it) => WALL_HUGGING.has(it.type) && !(it.type === 'cabinet' && it.h[0] >= 0.05)).map((it) => (it as { rect: Rect }).rect);
 
   // 外掛拉門：門片在牆面前滑動，滑動範圍（門片到牆面之間）不做踢腳板
   const tracks: Rect[] = [];

@@ -93,7 +93,11 @@ export const walls: readonly Wall[] = [
 ];
 
 /** 實牆量體（不可使用，滿高） */
-export const solidBlocks: readonly Rect[] = [[887, 966, 1045, 1154]];
+export const solidBlocks: readonly Rect[] = [
+  [887, 966, 1045, 1127.5],
+  // 南面 x 930–1039 挖進 26.5 cm 給玄關鞋櫃內嵌（2026-10 確認可動用此量體）
+  [887, 1127.5, 930, 1154],
+];
 
 /* ---------- 門 ---------- */
 
@@ -227,7 +231,9 @@ export const floorZones: readonly FloorZone[] = [
   { id: 'mbath', rect: [76, 131, 486, 296], material: 'tileDark', h: 0.006 },
   { id: 'bath', rect: [604, 893, 771, 1131], material: 'tileDark', h: 0.006 },
   { id: 'balcony', rect: [839, 122, 1040, 256], material: 'tileLight', h: 0.006 },
-  { id: 'entry', rect: [779, 1158, 1040, 1275], material: 'tileDark', h: 0.006 },
+  { id: 'entry', rect: [779, 1158, 887, 1275], material: 'tileDark', h: 0.006 },
+  // 鞋櫃內嵌後，實牆量體前方直到牆面都是玄關地坪
+  { id: 'entry-E', rect: [887, 1154, 1040, 1275], material: 'tileDark', h: 0.006 },
   { id: 'mbath-wet', rect: [77, 212, 257, 295], material: 'wetFloor', h: 0.012 },
   { id: 'bath-shower', rect: [605, 1034, 771, 1131], material: 'stone', h: 0.03 },
 ];
@@ -280,9 +286,15 @@ export type Item =
   | { id: string; type: 'officeChair'; at: Pt }
   | { id: string; type: 'deskLamp'; at: Pt }
   // 一般櫃體；front 為櫃門面向，doors 為門片數（畫分割線）
-  | { id: string; type: 'cabinet'; rect: Rect; h: HRange; front?: Side; doors?: number; seamH?: HRange; seamIn?: number }
-  | { id: string; type: 'kitchenRun'; rect: Rect; doors: number; sink: Rect; hob: Rect; hood: Rect; hoodH0: number }
-  | { id: string; type: 'island'; rect: Rect }
+  // 系統櫃：櫃體外框 rect、高度 h、正面朝向 front；fronts 描述正面的門片分割；plinth 為內縮踢腳高（m）；
+  // underGlow 為懸空櫃底部的間接燈
+  | { id: string; type: 'cabinet'; rect: Rect; h: HRange; front: Side; fronts: readonly Front[]; plinth?: number; underGlow?: boolean }
+  // 一字型廚具：rect 為下櫃；檯面在下櫃外加出邊；hoodBox 為包住抽油煙機、做到天花的煙機櫃
+  | { id: string; type: 'kitchenRun'; rect: Rect; fronts: readonly Front[]; sink: Rect; hob: Rect; hood: Rect; hoodH0: number;
+      hoodBox: Rect; backsplash: readonly { rect: Rect; h: HRange }[] }
+  | { id: string; type: 'island'; rect: Rect; fronts: readonly Front[] }
+  // 獨立式冰箱（法式對開＋抽屜，參考 Mitsubishi MR-B46F：600 × 699 × 1821 mm）
+  | { id: string; type: 'fridge'; rect: Rect; h: number }
   | { id: string; type: 'barStool'; at: Pt }
   | { id: string; type: 'pendant'; at: Pt }
   | { id: string; type: 'plant'; at: Pt; potR: number; potH: number; leafR: number; leafSY: number; leafY: number }
@@ -290,13 +302,30 @@ export type Item =
   | { id: string; type: 'coffeeTable'; at: Pt; r: number }
   | { id: string; type: 'armchair'; at: Pt; faceTo: Pt }
   | { id: string; type: 'floorLamp'; at: Pt }
-  | { id: string; type: 'tvCabinet'; rect: Rect; h: HRange }
   | { id: string; type: 'tv'; rect: Rect; h: HRange }
   | { id: string; type: 'vase'; at: Pt; r: number; h: HRange }
   | { id: string; type: 'storageBox'; rect: Rect; h: number }
   // 走廊壁燈；at 為牆面上的位置（x 為牆面）
   | { id: string; type: 'sconce'; at: Pt; h: HRange }
-  | { id: string; type: 'shoeCabinet'; rect: Rect; niche: HRange; top: number };
+;
+
+/**
+ * 櫃門分割：沿櫃體正面 from–to 等分 n 欄、h 範圍內等分 rows 列（預設 1）。
+ * kind：門、抽屜、開放格（shelves 片層板，led 為格內頂部燈條）或固定封板。
+ * handle（參考 100室內設計 取手整理）：push 按壓、chamfer 開啟邊 45° 斜切、gola 上緣鋁擠取手溝、grip 從開放格伸手（門緣多 2 cm）。
+ * 門縫 3 mm、門片 18 mm（系統櫃規格）。
+ */
+export interface Front {
+  from: number;
+  to: number;
+  h: HRange;
+  n: number;
+  rows?: number;
+  kind: 'door' | 'drawer' | 'open' | 'panel';
+  handle?: 'push' | 'chamfer' | 'gola' | 'grip';
+  shelves?: number;
+  led?: boolean;
+}
 
 export type ItemType = Item['type'];
 
@@ -308,7 +337,11 @@ export const items: readonly Item[] = [
   { id: 'mbed-ns-E', type: 'nightstand', rect: [315, 317, 359, 354] },
   { id: 'mbed-lamp-W', type: 'wallLamp', rect: [96, 307.5, 108, 310], h: [1.3, 1.45] },
   { id: 'mbed-lamp-E', type: 'wallLamp', rect: [331, 307.5, 343, 310], h: [1.3, 1.45] },
-  { id: 'mbed-shelf', type: 'shelf', rect: [435, 366, 472, 486], h: 2.0, shelves: 5, back: 'E', seed: 21 },
+  // 主臥衣櫃（2026-10 確認）：取代原本的開放書櫃，121 × 60，做到天花；3 扇門＋上方棉被櫃
+  { id: 'mbed-wardrobe', type: 'cabinet', rect: [424.5, 366, 484.5, 487], h: [0, 2.8], front: 'W', plinth: 0.08, fronts: [
+    { from: 366, to: 487, h: [0.08, 2.4], n: 3, kind: 'door', handle: 'chamfer' },
+    { from: 366, to: 487, h: [2.4, 2.8], n: 3, kind: 'door', handle: 'push' },
+  ] },
   { id: 'mbed-rug', type: 'rug', rect: [110, 370, 345, 556], material: 'rug2' },
   { id: 'mbed-curtains', type: 'curtains', label: '主臥', window: 'win-mbed', sides: 'both' },
 
@@ -341,16 +374,35 @@ export const items: readonly Item[] = [
   { id: 'guest-ns-E', type: 'nightstand', rect: [325, 952, 367, 990] },
   { id: 'guest-lamp-W', type: 'wallLamp', rect: [118, 947.5, 128, 950], h: [1.25, 1.4] },
   { id: 'guest-lamp-E', type: 'wallLamp', rect: [340, 947.5, 350, 950], h: [1.25, 1.4] },
-  { id: 'guest-wardrobe', type: 'cabinet', rect: [425, 1035, 485, 1270], h: [0, 2.4], front: 'W', doors: 4, seamH: [0, 2.4], seamIn: 0 },
+  // 客房衣櫃：5 扇門（約 47 cm，系統櫃常見寬度）＋上方 40 cm 棉被櫃做到天花，門縫對齊
+  { id: 'guest-wardrobe', type: 'cabinet', rect: [425, 1035, 485, 1270], h: [0, 2.8], front: 'W', plinth: 0.08, fronts: [
+    { from: 1035, to: 1270, h: [0.08, 2.4], n: 5, kind: 'door', handle: 'chamfer' },
+    { from: 1035, to: 1270, h: [2.4, 2.8], n: 5, kind: 'door', handle: 'push' },
+  ] },
   { id: 'guest-rug', type: 'rug', rect: [140, 1080, 340, 1240], material: 'rug2' },
   { id: 'guest-curtains', type: 'curtains', label: '客房', window: 'win-guest', sides: 'both' },
 
   /* 廚房與中島 */
-  { id: 'kitchen-run', type: 'kitchenRun', rect: [528, 131, 793, 191], doors: 4,
-    sink: [600, 140, 650, 180], hob: [728, 140, 780, 184], hood: [724, 131, 786, 175], hoodH0: 2.05 },
-  // 高櫃：冰箱位置待決，目前只是占位
-  { id: 'kitchen-tall', type: 'cabinet', rect: [796, 131, 830, 193], h: [0, 2.4] },
-  { id: 'island', type: 'island', rect: [580, 270, 840, 378] },
+  // 冰箱放牆面西端（2026-10 確認）：會遮住廚房窗西側約 8.5 cm
+  { id: 'fridge', type: 'fridge', rect: [496.5, 131, 556.5, 200.9], h: 1.821 },
+  // 一字型檯面縮短為 x 559–793（水槽、爐台尺寸維持）；抽油煙機收進到天花的煙機櫃；鋁擠取手溝
+  { id: 'kitchen-run', type: 'kitchenRun', rect: [559, 131, 793, 191], fronts: [
+    { from: 559, to: 715, h: [0.1, 0.86], n: 4, kind: 'door', handle: 'gola' },
+    { from: 715, to: 793, h: [0.1, 0.86], n: 1, rows: 3, kind: 'drawer', handle: 'gola' },
+  ], sink: [600, 140, 650, 180], hob: [728, 140, 780, 184], hood: [724, 131, 786, 175], hoodH0: 2.05,
+  hoodBox: [714, 131, 796, 175],
+  backsplash: [{ rect: [559, 131, 712, 132], h: [0.9, 1.035] }, { rect: [712, 131, 796, 132], h: [0.9, 2.05] }] },
+  // 東端高櫃往中島方向加深（2026-10 確認）：134 × 34，門朝西開向工作走道；靠檯面那段在檯面上方做開放格
+  { id: 'kitchen-tall', type: 'cabinet', rect: [796, 131, 830, 265], h: [0, 2.8], front: 'W', plinth: 0.08, fronts: [
+    { from: 131, to: 193, h: [0, 0.92], n: 1, kind: 'panel' },
+    { from: 131, to: 193, h: [0.92, 2.05], n: 1, kind: 'open', shelves: 2, led: true },
+    { from: 131, to: 193, h: [2.05, 2.8], n: 1, kind: 'door', handle: 'push' },
+    { from: 193, to: 265, h: [0.08, 2.4], n: 2, kind: 'door', handle: 'push' },
+    { from: 193, to: 265, h: [2.4, 2.8], n: 2, kind: 'door', handle: 'push' },
+  ] },
+  { id: 'island', type: 'island', rect: [580, 270, 840, 378], fronts: [
+    { from: 587, to: 833, h: [0.1, 0.86], n: 6, kind: 'door', handle: 'gola' },
+  ] },
   { id: 'stool-1', type: 'barStool', at: [650, 394] },
   { id: 'stool-2', type: 'barStool', at: [731, 394] },
   { id: 'stool-3', type: 'barStool', at: [811, 394] },
@@ -372,11 +424,16 @@ export const items: readonly Item[] = [
   // 客廳窗南端緊貼電視牆，窗簾只能往北收；布簾收起時會擋住約 20 cm 的玻璃（已確認）
   // 軌道從 y 268 起，避開陽台拉門的門框（到 y 267）
   { id: 'living-curtains', type: 'curtains', label: '客廳', window: 'win-living', sides: 'start', span: [268, 468] },
-  { id: 'tv-cabinet', type: 'tvCabinet', rect: [987, 520, 1031, 710], h: [0.18, 0.5] },
+  // 懸浮電視櫃：按壓開門、底部間接光
+  { id: 'tv-cabinet', type: 'cabinet', rect: [987, 520, 1031, 710], h: [0.18, 0.5], front: 'W', underGlow: true, fronts: [
+    { from: 520, to: 710, h: [0.18, 0.5], n: 4, kind: 'door', handle: 'push' },
+  ] },
   { id: 'tv', type: 'tv', rect: [1027, 549, 1030.5, 692], h: [0.95, 1.76] },
   // 展示角：高書櫃貼東牆，矮櫃貼實牆，接成 L 型
   { id: 'display-shelf', type: 'shelf', rect: [1003, 752, 1039, 966], h: 2.2, shelves: 6, back: 'E', seed: 41 },
-  { id: 'display-low', type: 'cabinet', rect: [891, 923, 1003, 966], h: [0, 0.75], front: 'N', doors: 4, seamH: [0.04, 0.73], seamIn: 0 },
+  { id: 'display-low', type: 'cabinet', rect: [891, 923, 1003, 966], h: [0, 0.75], front: 'N', plinth: 0.04, fronts: [
+    { from: 891, to: 1003, h: [0.04, 0.75], n: 4, kind: 'door', handle: 'push' },
+  ] },
   { id: 'display-vase', type: 'vase', at: [930, 945], r: 0.06, h: [0.75, 0.95] },
   { id: 'mbed-door-plant', type: 'plant', at: [510, 455], potR: 0.17, potH: 0.42, leafR: 0.3, leafSY: 1.6, leafY: 0.9 },
 
@@ -394,7 +451,13 @@ export const items: readonly Item[] = [
   { id: 'hall-sconce-2', type: 'sconce', at: [495.5, 1225], h: [1.6, 2.0] },
 
   /* 玄關 */
-  { id: 'shoe-cabinet', type: 'shoeCabinet', rect: [930, 1158.5, 1039, 1185], niche: [0.95, 1.2], top: 2.35 },
+  // 玄關鞋櫃：嵌進實牆量體、正面與牆面齊平（2026-10 確認）；懸空 15 cm＋底部間接光；中段開放層格放鑰匙，
+  // 上下櫃門從層格伸手開（深 26.5 cm 只放得下斜放鞋架）；上櫃做到天花
+  { id: 'shoe-cabinet', type: 'cabinet', rect: [930, 1127.5, 1039, 1154], h: [0.15, 2.8], front: 'S', underGlow: true, fronts: [
+    { from: 930, to: 1039, h: [0.15, 0.95], n: 3, kind: 'door', handle: 'grip' },
+    { from: 930, to: 1039, h: [0.95, 1.2], n: 1, kind: 'open', led: true },
+    { from: 930, to: 1039, h: [1.2, 2.8], n: 3, kind: 'door', handle: 'grip' },
+  ] },
 ];
 
 /* ---------- 燈位 ---------- */
@@ -526,8 +589,8 @@ export const wallDevices: readonly WallDevice[] = [
   { id: 'living-low', kind: 'socket', at: [495.5, 700], facing: 'E', h: 0.3, finish: 'white' },
   // 廚房、餐廳：開關（吊燈、廚房燈、陽台燈）在主臥門北側牆上；檯面插座避開窗與水槽、爐台
   { id: 'kitchen-sw', kind: 'switch', gangs: 3, at: [495.5, 420], facing: 'E', h: 1.2, finish: 'white' },
-  { id: 'kitchen-counter', kind: 'socket', at: [538, 131], facing: 'S', h: 1.1, finish: 'white' },
-  { id: 'kitchen-splash', kind: 'socket', at: [690, 131], facing: 'S', h: 0.97, finish: 'white' },
+  // 冰箱移到西端後，檯面左側插座被冰箱擋住，只留窗下擋水牆這一個（裝在石材擋水板上）
+  { id: 'kitchen-splash', kind: 'socket', at: [690, 132], facing: 'S', h: 0.97, finish: 'white' },
   { id: 'island', kind: 'socket', at: [833, 324], facing: 'E', h: 0.6, finish: 'dark' },
   // 客房前走廊、公衛、儲藏室
   { id: 'hall-sw', kind: 'switch', gangs: 1, at: [596, 905], facing: 'W', h: 1.2, finish: 'white' },
