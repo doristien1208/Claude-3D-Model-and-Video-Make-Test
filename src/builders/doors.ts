@@ -172,12 +172,12 @@ function swingDoor(b: Build, d: Extract<Door, { kind: 'swing' }>, obstacles: Obs
   for (const [base, out] of [[0, σ], [-σ * LT, -σ]] as const) {
     const anchor = along.clone().multiplyScalar((δ * (W - BACKSET)) / 100).add(across.clone().multiplyScalar(base / 100));
     anchor.y = HANDLE_H;
-    pivot.add(lever(mat.black, anchor, across.clone().multiplyScalar(out), toHinge));
+    pivot.add(lever(mat.blackSatin, anchor, across.clone().multiplyScalar(out), toHinge));
   }
 
   // 鉸鏈（不隨門片轉動）
   for (const y of HINGE_Y) {
-    const k = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.1, 12), mat.black);
+    const k = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.1, 12), mat.blackSatin);
     k.position.set(X(hx), y, Z(hy));
     k.castShadow = true;
     b.root.add(k);
@@ -285,8 +285,8 @@ function slideDoor(b: Build, d: Extract<Door, { kind: 'slide' }>, doors: Doors):
   for (const a of [L0 + 15, L1 - 15]) add(rectAC(f, a - 1.5, a + 1.5, k1, k1 + σ * 0.5), f.top - 0.12, f.top + 0.03, mat.black);
   // 走廊側直立把手（靠開啟後留在開口邊的那一端），房內側嵌入式取手
   const pa = dir < 0 ? L1 - 8 : L0 + 8;
-  add(rectAC(f, pa - 0.8, pa + 0.8, k1 + σ * 3.5, k1 + σ * 5.1), HANDLE_H - 0.175, HANDLE_H + 0.175, mat.black);
-  for (const h of [HANDLE_H - 0.15, HANDLE_H + 0.15]) add(rectAC(f, pa - 0.6, pa + 0.6, k1, k1 + σ * 3.5), h - 0.006, h + 0.006, mat.black);
+  add(rectAC(f, pa - 0.8, pa + 0.8, k1 + σ * 3.5, k1 + σ * 5.1), HANDLE_H - 0.175, HANDLE_H + 0.175, mat.blackSatin);
+  for (const h of [HANDLE_H - 0.15, HANDLE_H + 0.15]) add(rectAC(f, pa - 0.6, pa + 0.6, k1, k1 + σ * 3.5), h - 0.006, h + 0.006, mat.blackSatin);
   add(rectAC(f, pa - 1, pa + 1, k0 - σ * 0.2, k0 + σ * 0.3), HANDLE_H - 0.06, HANDLE_H + 0.06, mat.gap);
 
   const ctl: DoorCtl = {

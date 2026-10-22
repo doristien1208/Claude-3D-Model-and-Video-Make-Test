@@ -460,6 +460,25 @@ export const coves: readonly Cove[] = [
   { id: 'tv-wall', kind: 'washSlot', face: 1039, hor: false, into: -1, from: 470, to: 752, depth: 25, slot: 10, litFace: 1031, cap: 'to' },
 ];
 
+/* ---------- 環境反射探針 ---------- */
+
+/**
+ * 每區在中央 1.4 m 高從模型本身拍一張 360° 反射圖（PMREM），區內的物件用它當環境反射，
+ * 並以區域外框做箱型投影修正。開放式客餐廚合成一區；外框以室內牆面為界（px）。
+ */
+export const probeZones: readonly { id: string; rect: Rect }[] = [
+  { id: 'great', rect: [495.5, 131, 1039, 884.5] },
+  { id: 'balcony', rect: [839, 124, 1039, 256] },
+  { id: 'mbath', rect: [76, 131, 484.5, 295.5] },
+  { id: 'mbed', rect: [76, 304.5, 484.5, 560] },
+  { id: 'study', rect: [76, 570, 484.5, 935] },
+  { id: 'guest', rect: [76, 945, 484.5, 1274] },
+  { id: 'hall-guest', rect: [495.5, 889, 596, 1274] },
+  { id: 'bath', rect: [604, 893.5, 770.5, 1130.5] },
+  { id: 'storage', rect: [604, 1139.5, 770.5, 1274] },
+  { id: 'entry', rect: [779.5, 905, 1039, 1274] },
+];
+
 /* ---------- 開關插座與牆面設備 ---------- */
 
 /**

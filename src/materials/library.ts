@@ -41,7 +41,8 @@ function rampTexture(): THREE.Texture {
   return tex;
 }
 
-const BOOK_COLORS = [0x8a7a68, 0x5d4c3f, 0xa49580, 0x3f4a48, 0xb8a68a, 0x6e5a4a, 0x2f3433];
+/** 書櫃陳列師常用的書色：象牙、沙色、燕麥、灰褐、炭灰，加一兩本鏽紅、灰綠（去掉書衣、色塊分群） */
+const BOOK_COLORS = [0xede7da, 0xcdbfa8, 0xbfb2a0, 0x8e8070, 0x3a3a38, 0x9a5a3c, 0x8f9a80];
 
 export function createMaterials(tex: TextureLibrary) {
   const PBR = (name: TexName, tint?: RGB, o: THREE.MeshStandardMaterialParameters = {}) => {
@@ -68,7 +69,10 @@ export function createMaterials(tex: TextureLibrary) {
     walnutDark: PBR('walnut', TINTS.walnutDark),
     door: PBR('walnut', TINTS.door),
     slat: PBR('slat', TINTS.walnut),
-    black: M({ color: 0x1d1b1a, roughness: 0.5, metalness: 0.4 }),
+    // 黑色粉體烤漆：塗層是高分子，metalness 0（RAL 9005 LRV ≈ 4）；燈具、層架等用霧面
+    black: M({ color: 0x202020, roughness: 0.6, metalness: 0 }),
+    // 緞面黑：門把、龍頭、毛巾桿、窗把手
+    blackSatin: M({ color: 0x1f1f1f, roughness: 0.35, metalness: 0 }),
     stone: PBR('stoneDarkSlab', TINTS.stone),
     stoneWarm: PBR('stoneLightSlab', TINTS.stoneWarm),
     tileDark: PBR('stoneDarkTile'),
@@ -84,25 +88,37 @@ export function createMaterials(tex: TextureLibrary) {
     rug: PBR('rug', TINTS.rug),
     rug2: PBR('rug', TINTS.rug2),
     chair: PBR('fabric', TINTS.chair),
-    white: M({ color: 0xf1eee8, roughness: 0.25 }),
-    water: M({ color: 0xaebfbe, roughness: 0.1 }),
-    mirror: M({ color: 0x6a7274, roughness: 0.12, metalness: 0.3 }),
-    glass: new THREE.MeshStandardMaterial({ color: 0xcfe0e6, transparent: true, opacity: 0.16, roughness: 0.05, depthWrite: false }),
-    tv: M({ color: 0x0b0b0c, roughness: 0.18, metalness: 0.3 }),
-    plant: M({ color: 0x55663f, roughness: 0.9 }),
-    pot: M({ color: 0x2e2a27, roughness: 0.7 }),
-    kraft: M({ color: 0xb39673, roughness: 1 }),
+    // 衛浴陶瓷（施釉瓷，physicallybased.info 實測 "Porcelain"）
+    white: new THREE.MeshPhysicalMaterial({ color: 0xe0e0dd, roughness: 0.04, ior: 1.5 }),
+    // 壓克力浴缸（PMMA ior 1.49）
+    acrylic: new THREE.MeshPhysicalMaterial({ color: 0xebebe8, roughness: 0.07, ior: 1.49 }),
+    // 浴缸的水：ior 1.333，幾乎無色
+    water: new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 1, roughness: 0.02, ior: 1.333, thickness: 0.35,
+      attenuationColor: new THREE.Color().setRGB(0.969, 0.996, 0.997), attenuationDistance: 1 }),
+    // 鏡子：銀鏡反射率約 86%（AGC Mirox，EN 1036），玻璃含鐵帶極淡綠；鏡面本身另有即時平面反射
+    mirror: M({ color: 0xf0f3f1, roughness: 0.02, metalness: 1 }),
+    // 清玻璃（浮法 ior 1.52）：穿透材質，反射不會被透明度一起淡掉；薄片（thickness 0）不折射
+    glass: new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 1, roughness: 0, ior: 1.52, thickness: 0, metalness: 0 }),
+    // 電視（關機）：OLED 光面，抗反射膜約 1% 反射
+    tv: new THREE.MeshPhysicalMaterial({ color: 0x0e0e0e, roughness: 0.05, ior: 1.22 }),
+    // 植物葉片（琴葉榕、橡膠樹一類的蠟質葉）
+    plant: M({ color: 0x3a4a2e, roughness: 0.45, side: THREE.DoubleSide }),
+    // 霧面施釉陶盆（炭灰）
+    pot: M({ color: 0x3c3c3a, roughness: 0.6 }),
+    // 牛皮紙箱（physicallybased.info 實測 "Cardboard"）
+    kraft: M({ color: 0xa07e5d, roughness: 0.85 }),
     outside: M({ color: 0x9e9a92, roughness: 1 }),
     glow: M({ color: 0xffe2bd, emissive: 0xffb46b, emissiveIntensity: 3 }),
     glowSoft: M({ color: 0xf0e2cc, emissive: 0xffbb7a, emissiveIntensity: 1.2, roughness: 1 }),
     // 以下三種在參考版是單次使用的行內材質
     wetFloor: M({ color: 0x2b2826, roughness: 0.4 }),
     sinkMetal: M({ color: 0x161515, roughness: 0.3, metalness: 0.6 }),
-    ceramicBeige: M({ color: 0xc9b9a0, roughness: 0.6 }),
+    ceramicBeige: M({ color: 0xcdbfa8, roughness: 0.55 }),
     // 門樘陰影縫、嵌入式取手的凹槽
     gap: M({ color: 0x1a1715, roughness: 0.9 }),
     // 深色鋁框（窗、陽台拉門）
-    alu: M({ color: 0x232120, roughness: 0.4, metalness: 0.6 }),
+    // 深古銅陽極鋁（Tiger Drylac Dark Bronze #4E4542；陽極處理以金屬建模）
+    alu: M({ color: 0x4e4542, roughness: 0.3, metalness: 1 }),
     // 窗簾：象牙白麻紗（半透明）、燕麥色布簾；雙面
     sheer: PBR('fabric', [1.55, 1.5, 1.38], { transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false, vertexColors: true }),
     drape: PBR('fabric', [0.92, 0.8, 0.64], { side: THREE.DoubleSide, vertexColors: true }),
@@ -113,12 +129,13 @@ export function createMaterials(tex: TextureLibrary) {
     // 間接燈在天花／牆面上的光暈（加色疊加，強度隨日夜切換；見 lighting.ts）
     coveGlow: new THREE.MeshBasicMaterial({ color: 0xffb36b, map: rampTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }),
     // 衛浴霧面玻璃
-    frosted: new THREE.MeshStandardMaterial({ color: 0xe6eaea, transparent: true, opacity: 0.62, roughness: 0.5, depthWrite: false }),
+    frosted: new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 1, roughness: 0.45, ior: 1.52, thickness: 0 }),
   };
   for (const [k, m] of Object.entries(mat)) m.name = k;
 
   const books = BOOK_COLORS.map((c, i) => {
-    const m = M({ color: c, roughness: 0.9 });
+    // 霧面上膜書封 0.5–0.6、布面精裝 0.85
+    const m = M({ color: c, roughness: i % 2 ? 0.55 : 0.85 });
     m.name = `book${i}`;
     return m;
   });

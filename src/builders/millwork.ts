@@ -73,8 +73,8 @@ export function kitchenRun(b: Build, it: ItemOf<'kitchenRun'>): void {
   // 水槽與龍頭
   b.box(it.sink, 0.895, 0.905, mat.sinkMetal, { cast: false });
   const fx = (it.sink[0] + it.sink[2]) / 2;
-  b.bx(fx - 3, y1 + 1, fx + 3, it.sink[1], 0.9, 1.18, mat.black);
-  b.bx(fx - 3, y1 + 1, fx + 3, y1 + 21, 1.15, 1.18, mat.black);
+  b.bx(fx - 3, y1 + 1, fx + 3, it.sink[1], 0.9, 1.18, mat.blackSatin);
+  b.bx(fx - 3, y1 + 1, fx + 3, y1 + 21, 1.15, 1.18, mat.blackSatin);
   // 爐台與抽油煙機
   b.box(it.hob, 0.9, 0.906, mat.tv, { cast: false });
   const [hx1, , hx2, hy2] = it.hood;

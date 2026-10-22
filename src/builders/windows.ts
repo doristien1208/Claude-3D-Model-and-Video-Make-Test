@@ -86,7 +86,7 @@ function windowUnit(b: Build, spec: WindowSpec, ceiling: THREE.Group): void {
     if (lockAt !== undefined) {
       // 月牙鎖／把手：扇框室內面、扇高中段
       const ym = (y0 + y1) / 2;
-      B(lockAt - 1, lockAt + 1, d1, d1 + 1.6, ym - 0.05, ym + 0.05, mat.black);
+      B(lockAt - 1, lockAt + 1, d1, d1 + 1.6, ym - 0.05, ym + 0.05, mat.blackSatin);
     }
   };
   const IN = DEPTH - 0.4 - SLIDE.depth, OUT = 0.4; // 室內軌道、室外軌道的扇深度起點
@@ -119,7 +119,7 @@ function windowUnit(b: Build, spec: WindowSpec, ceiling: THREE.Group): void {
       B(a1 - AWNING.side, a1, d0, d1, h0 + m(AWNING.bottom), h1 - m(AWNING.top), mat.alu);
       B(a0 + AWNING.side, a1 - AWNING.side, dc - GLASS / 2, dc + GLASS / 2, h0 + m(AWNING.bottom), h1 - m(AWNING.top), glass, { cast: false });
       const am = (a0 + a1) / 2;
-      B(am - 6, am + 6, d1, d1 + 2, h0 + 0.012, h0 + 0.03, mat.black);
+      B(am - 6, am + 6, d1, d1 + 2, h0 + 0.012, h0 + 0.03, mat.blackSatin);
       break;
     }
     case 'fixed':

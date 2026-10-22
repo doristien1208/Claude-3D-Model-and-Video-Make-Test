@@ -8,6 +8,8 @@ import { viewpoints, walkStart } from './data/layout';
 import { Lighting } from './lighting/lighting';
 import { createMaterials } from './materials/library';
 import { TextureLibrary } from './materials/textures';
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
+import { EnvProbes } from './render/envProbes';
 import { createRenderer } from './render/renderer';
 import { createDock, showWebGLError, type Mode } from './ui/dock';
 import { Minimap } from './ui/minimap';
@@ -27,6 +29,26 @@ const materials = createMaterials(textures);
 const house = buildHouse(materials);
 scene.add(house.build.root, house.ground);
 const lights = new Lighting(scene, renderer, materials.mat, house.build.areaLights);
+// 每區環境反射探針；日夜切換時發光強度會整體改變的材質不複製
+const probes = new EnvProbes(renderer, scene, house.build.root, new Set([materials.mat.glow, materials.mat.glowSoft]));
+
+/* ---------- 窗外景觀（Poly Haven CC0 HDRI；先跑 npm run fetch:hdri） ---------- */
+const OUTDOOR = {
+  day: { file: 'hotel_rooftop_balcony_4k.hdr', intensity: 1.0, rotation: 0 },
+  night: { file: 'shanghai_bund_4k.hdr', intensity: 0.8, rotation: 0 },
+} as const;
+const hdri: Partial<Record<'day' | 'night', THREE.Texture>> = {};
+/** 貼圖與 HDRI 都載入後才拍環境探針 */
+let probesReady = false;
+/**
+ * 換了反射圖的材質要重新編譯；r186 會平行編譯著色器，沒編好的物件那一格直接不畫，
+ * 所以編譯期間暫停渲染、保留上一格畫面，避免房子閃一下不見。
+ */
+let compiling: Promise<void> | null = null;
+function compileThenRender(): void {
+  const p = renderer!.compileAsync(scene, camera).catch(() => {}).then(() => { if (compiling === p) compiling = null; });
+  compiling = p;
+}
 
 /* ---------- 狀態 ---------- */
 let night = true, cut = true, mode: Mode = 'orbit';
@@ -49,8 +71,41 @@ const dock = createDock(viewpoints, {
   },
 });
 
+/** 漫遊時窗外用 HDRI（室外地面隱藏）；俯瞰時維持純色背景與地面 */
+function applyOutdoor(walkView: boolean): void {
+  const key = night ? 'night' : 'day', tex = hdri[key];
+  if (walkView && tex) {
+    scene.background = tex;
+    scene.backgroundIntensity = OUTDOOR[key].intensity;
+    scene.backgroundRotation.set(0, OUTDOOR[key].rotation, 0);
+  } else {
+    lights.apply(night);
+  }
+  house.ground.visible = !(walkView && tex);
+}
+
+/** 拍環境探針前把場景切到漫遊狀態，回傳還原函式 */
+function probeState(): () => void {
+  const clip = renderer!.clippingPlanes, ceil = house.ceiling.visible;
+  renderer!.clippingPlanes = [];
+  house.ceiling.visible = true;
+  applyOutdoor(true);
+  for (const r of house.build.reflectors) r.visible = false;
+  return () => {
+    renderer!.clippingPlanes = clip;
+    house.ceiling.visible = ceil;
+    applyOutdoor(mode === 'walk');
+    for (const r of house.build.reflectors) r.visible = true;
+  };
+}
+
 function applyLight(): void {
   lights.apply(night);
+  applyOutdoor(mode === 'walk');
+  if (probesReady) {
+    probes.apply(night ? 'night' : 'day', probeState);
+    compileThenRender();
+  }
   dock.showNight(night);
   // 窗簾展示狀態跟著日夜切換
   const p = night ? CURTAIN_PRESETS.night : CURTAIN_PRESETS.day;
@@ -77,7 +132,10 @@ function setMode(m: Mode): void {
   else camera.fov = WALK_FOV;
   camera.updateProjectionMatrix();
   dock.showMode(m);
+  applyOutdoor(m === 'walk');
   applyCut();
+  // 剖切開關與天花板顯示會改變著色器組合
+  if (probesReady) compileThenRender();
   renderer!.domElement.focus();
 }
 
@@ -99,16 +157,27 @@ function loop(t: number): void {
     walk.update(dt);
     minimap.draw();
   } else orbit.update();
-  renderer!.render(scene, camera);
+  if (!compiling) renderer!.render(scene, camera);
   requestAnimationFrame(loop);
 }
 applyLight();
 setMode('orbit');
+// 貼圖與窗外 HDRI 載入後，換上窗外景觀並拍環境探針
+const hdrLoader = new HDRLoader().setPath(`${import.meta.env.BASE_URL}hdri/`);
+const outdoorReady = Promise.all((['day', 'night'] as const).map(async (k) => {
+  const t = await hdrLoader.loadAsync(OUTDOOR[k].file);
+  t.mapping = THREE.EquirectangularReflectionMapping;
+  hdri[k] = t;
+})).catch((e) => console.warn('窗外 HDRI 載入失敗（請先執行 npm run fetch:hdri）', e));
+Promise.all([textures.ready, outdoorReady]).then(() => {
+  probesReady = true;
+  applyLight();
+});
 requestAnimationFrame(loop);
 
 /* ---------- 除錯／比對介面（與參考版 window.__dbg 相同） ---------- */
 Object.assign(window, {
   __dbg: { setMode, walk: walk.state, applyLight, setNight, setCut, camera, orbit, setDoor: (id: string, t: number) => house.doors.set(id, t),
     setCurtain: (id: string, layer: 'sheer' | 'main', t: number) => house.build.curtains.find((c) => c.id === id)?.set(layer, t) },
-  __app: { THREE, scene, renderer, camera, build: house.build, doors: house.doors, ready: textures.ready },
+  __app: { THREE, scene, renderer, camera, build: house.build, doors: house.doors, probes, ready: textures.ready },
 });

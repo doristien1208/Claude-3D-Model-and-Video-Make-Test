@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { Reflector } from 'three/addons/objects/Reflector.js';
 import { X, Z } from '../core/units';
 import { CEILING_H as H, type Pt } from '../data/layout';
 import type { ItemOf } from '../data/query';
@@ -11,7 +12,7 @@ export function bathtub(b: Build, it: ItemOf<'bathtub'>): void {
   const { mat } = b;
   const [x1, y1, x2, y2] = it.rect;
   b.bx(x1 - 2, y1 - 2, x2 + 2, y2 + 2, 0, 0.08, mat.stone);
-  b.box(it.rect, 0, 0.56, mat.white, { solid: true });
+  b.box(it.rect, 0, 0.56, mat.acrylic, { solid: true });
   b.bx(x1 + 8, y1 + 8, x2 - 8, y2 - 8, 0.5, 0.565, mat.water, { cast: false });
 }
 
@@ -19,17 +20,17 @@ export function bathtub(b: Build, it: ItemOf<'bathtub'>): void {
 export function showerValve(b: Build, it: ItemOf<'showerValve'>): void {
   const { mat } = b;
   const [x, y] = it.at;
-  b.bx(x, y - 16, x + 3, y + 16, 1.0, 1.18, mat.black);
-  b.bx(x, y - 2, x + 4, y + 2, 1.18, 2.0, mat.black);
+  b.bx(x, y - 16, x + 3, y + 16, 1.0, 1.18, mat.blackSatin);
+  b.bx(x, y - 2, x + 4, y + 2, 1.18, 2.0, mat.blackSatin);
 }
 
 /** 頂噴花灑：從 from（牆面）伸出橫桿到 head */
 export function showerHead(b: Build, it: ItemOf<'showerHead'>): void {
   const { mat } = b;
   const [hx, hy] = it.head, [fx, fy] = it.from;
-  b.cyl(hx, hy, it.r, 2.3, 2.32, mat.black);
-  if (fy === hy) b.bx(Math.min(fx, hx), hy - 2, Math.max(fx, hx), hy + 2, 2.3, 2.32, mat.black);
-  else b.bx(hx - 2, Math.min(fy, hy), hx + 2, Math.max(fy, hy), 2.3, 2.32, mat.black);
+  b.cyl(hx, hy, it.r, 2.3, 2.32, mat.blackSatin);
+  if (fy === hy) b.bx(Math.min(fx, hx), hy - 2, Math.max(fx, hx), hy + 2, 2.3, 2.32, mat.blackSatin);
+  else b.bx(hx - 2, Math.min(fy, hy), hx + 2, Math.max(fy, hy), 2.3, 2.32, mat.blackSatin);
 }
 
 /**
@@ -66,14 +67,22 @@ export function vanity(b: Build, it: ItemOf<'vanity'>): void {
   const { mat } = b;
   b.box(it.rect, 0.5, 0.85, mat.walnut, { solid: true });
   b.box(it.basin, 0.85, 0.95, mat.white);
-  b.box(it.faucet, 0.95, it.faucetTop, mat.black);
+  b.box(it.faucet, 0.95, it.faucetTop, mat.blackSatin);
   const [mx1, , mx2, my2] = it.mirror, [m0, m1] = it.mirrorH;
   b.box(it.mirror, m0, m1, mat.mirror, { cast: false });
   b.glowBox(mx1, my2, mx2, my2 + 2, m1, m1 + 0.02);
+  // 鏡面即時平面反射（Reflector）：鏡子貼北牆、朝南；顏色 0.5 線性為原樣反射，略低一點並帶極淡綠＝銀鏡約 86% 反射率
+  const w = (mx2 - mx1) / 100, h = m1 - m0;
+  const mirror = new Reflector(new THREE.PlaneGeometry(w, h), {
+    clipBias: 0.003, color: 0xb0b4b1, textureWidth: Math.round(1400 * w), textureHeight: Math.round(1400 * h),
+  });
+  mirror.position.set(X((mx1 + mx2) / 2), (m0 + m1) / 2, Z(my2) + 0.0005);
+  b.root.add(mirror);
+  b.reflectors.push(mirror);
 }
 
 export function towelBar(b: Build, it: ItemOf<'towelBar'>): void {
-  b.box(it.rect, it.h[0], it.h[1], b.mat.black);
+  b.box(it.rect, it.h[0], it.h[1], b.mat.blackSatin);
 }
 
 /* ---------- 燈具 ---------- */
