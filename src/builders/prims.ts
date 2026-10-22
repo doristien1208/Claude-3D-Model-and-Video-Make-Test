@@ -114,6 +114,19 @@ export class Build {
     return me;
   }
 
+  /**
+   * 燈條面光源（RectAreaLight，2700K）：中心 (x, y) px、高 h（m），長 len、寬 w（m），沿 x（alongX）或沿 y，往上或往下發光。
+   * lmPerM 為每公尺流明；朗伯面光源 Φ = π·L·A，亮度 L = lmPerM ÷ (π·w)（nits）。夜間才開（見 lighting.ts）。
+   */
+  stripLight(x: number, y: number, h: number, len: number, w: number, alongX: boolean, facing: 'up' | 'down', lmPerM: number): THREE.RectAreaLight {
+    const light = new THREE.RectAreaLight(0xffb978, 0, len, w);
+    light.position.set(X(x), h, Z(y));
+    light.rotation.set(facing === 'down' ? -Math.PI / 2 : Math.PI / 2, alongX ? 0 : Math.PI / 2, 0, 'YXZ');
+    this.root.add(light);
+    this.areaLights.push({ light, intensity: lmPerM / (Math.PI * w) });
+    return light;
+  }
+
   glowBox(x1: number, y1: number, x2: number, y2: number, h0: number, h1: number, m?: THREE.Material): THREE.Mesh {
     const g = this.bx(x1, y1, x2, y2, h0, h1, m || this.mat.glow, { cast: false });
     this.glow.push(g);

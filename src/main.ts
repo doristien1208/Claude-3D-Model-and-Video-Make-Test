@@ -10,6 +10,7 @@ import { createMaterials } from './materials/library';
 import { TextureLibrary } from './materials/textures';
 import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 import { EnvProbes } from './render/envProbes';
+import { LightMask } from './render/lightMask';
 import { FROSTED_T, hemisphereMean } from './render/hdriGlow';
 import { createRenderer } from './render/renderer';
 import { createDock, showWebGLError, type Mode } from './ui/dock';
@@ -30,8 +31,10 @@ const materials = createMaterials(textures);
 const house = buildHouse(materials);
 scene.add(house.build.root, house.ground);
 const lights = new Lighting(scene, renderer, materials.mat, house.build.areaLights);
-// 每區環境反射探針；日夜切換時發光強度會整體改變的材質不複製
-const probes = new EnvProbes(renderer, scene, house.build.root, new Set([materials.mat.glow, materials.mat.glowSoft]));
+// 每區環境反射探針；日夜切換時發光強度會整體改變的材質不複製。同一批材質再加上燈光遮罩（燈只照亮所在空間）
+const lightMask = new LightMask();
+const probes = new EnvProbes(renderer, scene, house.build.root, new Set([materials.mat.glow, materials.mat.glowSoft]), (s) => lightMask.patch(s));
+lightMask.update(scene);
 
 /* ---------- 窗外景觀（Poly Haven CC0 HDRI；先跑 npm run fetch:hdri） ---------- */
 const OUTDOOR = {
@@ -177,8 +180,9 @@ setMode('orbit');
 const hdrLoader = new HDRLoader().setPath(`${import.meta.env.BASE_URL}hdri/`);
 const outdoorReady = Promise.all((['day', 'night'] as const).map(async (k) => {
   const t = await hdrLoader.loadAsync(OUTDOOR[k].file);
-  t.mapping = THREE.EquirectangularReflectionMapping;
-  hdri[k] = t;
+  // 先轉成立方體貼圖當背景：讓 three.js 在繪製途中才轉（例如第一次拍環境探針時）會變成巢狀繪製，那一次只畫得出背景
+  const cube = new THREE.WebGLCubeRenderTarget(t.image.height / 2, { type: THREE.HalfFloatType }).fromEquirectangularTexture(renderer, t);
+  hdri[k] = cube.texture;
   const { rotation, intensity } = OUTDOOR[k];
   frostedGlow[k] = house.build.frosted.map((f) => hemisphereMean(t, f.out, rotation).multiplyScalar(FROSTED_T * intensity));
 })).catch((e) => console.warn('窗外 HDRI 載入失敗（請先執行 npm run fetch:hdri）', e));

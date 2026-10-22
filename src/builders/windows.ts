@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { X, Z } from '../core/units';
-import { CEILING_H as H, CURTAIN_BOX, site, windowSpecs, type WindowSpec } from '../data/layout';
+import { CEILING_H as H, CURTAIN_BOX, lighting, site, windowSpecs, type WindowSpec } from '../data/layout';
 import { findOpening, isHorizontal } from '../data/query';
 import { rectAlong, worldUV, type BoxOpt, type Build } from './prims';
 
@@ -176,13 +176,8 @@ function windowUnit(b: Build, spec: WindowSpec, ceiling: THREE.Group): void {
     const led = b.box(R(from + 3, to - 3, W - 1, W + 1), 2.775, 2.785, mat.glow, { cast: false });
     b.glow.push(led);
     ceiling.add(led);
-    const len = (to - from - 6) / 100;
-    const light = new THREE.RectAreaLight(0xffb978, 0, len, 0.03);
     const [cx, cy] = f.hor ? [(from + to) / 2, ci + σ * W] : [ci + σ * W, (from + to) / 2];
-    light.position.set(X(cx), 2.77, Z(cy));
-    light.rotation.set(-Math.PI / 2, f.hor ? 0 : Math.PI / 2, 0, 'YXZ');
-    b.root.add(light);
-    b.areaLights.push({ light, intensity: 300 });
+    b.stripLight(cx, cy, 2.77, (to - from - 6) / 100, 0.03, f.hor, 'down', lighting.strips.curtain);
   }
 }
 

@@ -1,7 +1,9 @@
 import * as THREE from 'three';
-import { CEILING_H as H, floorZones, site, solidBlocks, wallTiles, walls, type Wall } from '../data/layout';
+import { X, Z } from '../core/units';
+import { CEILING_H as H, DOWNLIGHT, floorZones, lighting, site, solidBlocks, wallTiles, walls, type Wall } from '../data/layout';
 import { isHorizontal } from '../data/query';
-import type { Build } from './prims';
+import { worldUV, type Build } from './prims';
+import { slab } from './shapes';
 
 /* ---------- 牆體（依 SVG 牆線，門窗為開口） ---------- */
 function buildWall(b: Build, w: Wall): void {
@@ -67,7 +69,18 @@ export function buildArchitecture(b: Build): Architecture {
   const ceiling = new THREE.Group();
   ceiling.name = 'ceiling';
   b.root.add(ceiling);
-  ceiling.add(b.bx(fx1 - k, fy1 - k, fx2 + k, fy2 + k, H, H + 0.06, mat.ceil));
+  // 天花板（厚 6 cm）：照崁燈位置開孔，深杯在 fixtures.ts
+  const v = (px: number, py: number) => new THREE.Vector2(X(px), Z(py));
+  const shape = new THREE.Shape([v(fx1 - k, fy1 - k), v(fx2 + k, fy1 - k), v(fx2 + k, fy2 + k), v(fx1 - k, fy2 + k)]);
+  for (const d of lighting.downlights) {
+    shape.holes.push(new THREE.Path().absarc(X(d.at[0]), Z(d.at[1]), DOWNLIGHT[d.kind].cutout / 2 - 0.002, 0, 2 * Math.PI, false));
+  }
+  const ceilGeo = slab(shape, 0.06);
+  const ceil = new THREE.Mesh(ceilGeo, mat.ceil);
+  ceil.position.y = H;
+  worldUV(ceilGeo, ceil.position);
+  ceil.castShadow = ceil.receiveShadow = true;
+  ceiling.add(ceil);
 
   /* 衛浴牆面石材 */
   for (const s of wallTiles) b.box(s.rect, s.h[0], s.h[1], mat.tileLight, { cast: false });

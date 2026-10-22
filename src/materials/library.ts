@@ -25,22 +25,6 @@ export const TINTS = {
   chair: [0.085, 0.082, 0.083],
 } as const satisfies Record<string, RGB>;
 
-/** 光暈用的漸層：u = 0 最亮、u = 1 完全透明（貼在 map 上，搭配加色疊加） */
-function rampTexture(): THREE.Texture {
-  const c = document.createElement('canvas');
-  c.width = 256; c.height = 1;
-  const g = c.getContext('2d')!, img = g.createImageData(256, 1);
-  for (let i = 0; i < 256; i++) {
-    const t = i / 255, v = Math.round(255 * Math.pow(1 - t, 2.2));
-    img.data.set([v, v, v, 255], i * 4);
-  }
-  g.putImageData(img, 0, 0);
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-  return tex;
-}
-
 /** 書櫃陳列師常用的書色：象牙、沙色、燕麥、灰褐、炭灰，加一兩本鏽紅、灰綠（去掉書衣、色塊分群） */
 const BOOK_COLORS = [0xede7da, 0xcdbfa8, 0xbfb2a0, 0x8e8070, 0x3a3a38, 0x9a5a3c, 0x8f9a80];
 
@@ -158,8 +142,8 @@ export function createMaterials(tex: TextureLibrary) {
     new THREE.MeshStandardMaterial({ roughness: 0.8, metalness: 0, ...o });
   const terryN = terryNormalMap(), rollEnd = rollEndTexture(), glassN = glassNormal(GLASS_SLOPE);
   const terry = (color: number, sheenColor: number, map?: THREE.Texture) => new THREE.MeshPhysicalMaterial({
-    color, map, roughness: 0.95, normalMap: map ? undefined : terryN, normalScale: new THREE.Vector2(0.6, 0.6),
-    sheen: 1, sheenRoughness: 0.6, sheenColor,
+    color, roughness: 0.95, normalScale: new THREE.Vector2(0.6, 0.6), sheen: 1, sheenRoughness: 0.6, sheenColor,
+    ...(map ? { map } : { normalMap: terryN }),
   });
 
   const mat = {
@@ -231,8 +215,8 @@ export function createMaterials(tex: TextureLibrary) {
     plateWhite: M({ color: 0xf1eee8, roughness: 0.35 }),
     plateDark: M({ color: 0x3b3c3d, roughness: 0.4, metalness: 0.15 }),
     coverClear: new THREE.MeshStandardMaterial({ color: 0xd8dcdc, transparent: true, opacity: 0.35, roughness: 0.2, depthWrite: false }),
-    // 間接燈在天花／牆面上的光暈（加色疊加，強度隨日夜切換；見 lighting.ts）
-    coveGlow: new THREE.MeshBasicMaterial({ color: 0xffb36b, map: rampTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }),
+    // 崁燈白色深杯（內面朝下看得到，半光澤）
+    cup: M({ color: 0xf2f0ec, roughness: 0.35, side: THREE.BackSide }),
     // 衛浴霧面玻璃：蝕刻面把窗外的光完全打散，室內看到的是一片均勻亮面，不做穿透
     // （three.js 穿透玻璃後面的穿透物件不會畫，隔著淋浴隔屏看會變成透明窗）；發光亮度由 main.ts 依窗外 HDRI 設定。
     // 室內側：粗糙反射＋少量背向散射

@@ -36,7 +36,10 @@ interface Zone {
   cache: Map<string, THREE.WebGLRenderTarget>;
 }
 
-function patch(m: THREE.MeshStandardMaterial, z: Zone): void {
+/** 其他模組對同一批材質的著色器修改（例如燈光遮罩），在箱型投影之後執行 */
+export type ShaderPatch = (shader: THREE.WebGLProgramParametersWithUniforms) => void;
+
+function patch(m: THREE.MeshStandardMaterial, z: Zone, extra?: ShaderPatch): void {
   m.onBeforeCompile = (shader) => {
     shader.uniforms.bpMin = { value: z.box.min };
     shader.uniforms.bpMax = { value: z.box.max };
@@ -51,8 +54,9 @@ function patch(m: THREE.MeshStandardMaterial, z: Zone): void {
       '#include <envmap_physical_pars_fragment>',
       BP_PARS + chunk.replace(RADIANCE_LINE, `${RADIANCE_LINE}\n\t\t\treflectVec = bpCorrect( reflectVec );`),
     );
+    extra?.(shader);
   };
-  m.customProgramCacheKey = () => 'bpcem';
+  m.customProgramCacheKey = () => (extra ? 'bpcem+x' : 'bpcem');
 }
 
 export class EnvProbes {
@@ -60,8 +64,8 @@ export class EnvProbes {
   private readonly pmrem: THREE.PMREMGenerator;
   private readonly scene: THREE.Scene;
 
-  /** exclude：執行期間會被整體修改的共用材質（例如日夜切換的發光材質），不複製 */
-  constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, root: THREE.Object3D, exclude: ReadonlySet<THREE.Material>) {
+  /** exclude：執行期間會被整體修改的共用材質（例如日夜切換的發光材質），不複製；extra：額外的著色器修改 */
+  constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, root: THREE.Object3D, exclude: ReadonlySet<THREE.Material>, extra?: ShaderPatch) {
     this.scene = scene;
     this.pmrem = new THREE.PMREMGenerator(renderer);
     this.zones = probeZones.map(({ id, rect: [x1, y1, x2, y2], probe }) => {
@@ -86,7 +90,7 @@ export class EnvProbes {
       let cm = map.get(m);
       if (!cm) {
         cm = m.clone();
-        patch(cm, zone);
+        patch(cm, zone, extra);
         zone.materials.push(cm);
         map.set(m, cm);
       }

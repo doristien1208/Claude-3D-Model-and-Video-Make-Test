@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { X, Z } from '../core/units';
-import { CEILING_H as H, type Pt } from '../data/layout';
+import { CEILING_H as H, DOWNLIGHT, DOWNLIGHT_RECESS, type Downlight } from '../data/layout';
 import type { ItemOf } from '../data/query';
 import type { Build } from './prims';
 
@@ -47,15 +47,24 @@ export function sconce(b: Build, it: ItemOf<'sconce'>): void {
   b.glowBox(x, y - 2, x + 1.5, y + 2, h0 - 0.02, h0);
 }
 
-/** 天花板崁燈：發光圓面＋黑色外環 */
-export function downlights(b: Build, pts: readonly Pt[]): void {
+/**
+ * 天花板崁燈（白色飾圈＋白色深杯）：飾圈寬 8 mm、往上 3.5 cm 的深杯（遮光角約 30°）、杯底發光面；
+ * 天花板在 architecture.ts 依開孔挖洞，光源見 lighting.ts
+ */
+export function downlights(b: Build, list: readonly Downlight[]): void {
   const { mat } = b;
-  for (const [px, py] of pts) {
-    b.disc(px, py, H - 0.002, 0.045, 20, mat.glow);
-    const ring = new THREE.Mesh(new THREE.RingGeometry(0.045, 0.06, 24), mat.black);
+  for (const d of list) {
+    const r = DOWNLIGHT[d.kind].cutout / 2, x = X(d.at[0]), z = Z(d.at[1]);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(r - 0.002, r + 0.008, 48), mat.plateWhite);
     ring.rotation.x = Math.PI / 2;
-    ring.position.set(X(px), H - 0.003, Z(py));
+    ring.position.set(x, H - 0.001, z);
     b.root.add(ring);
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(r - 0.002, r - 0.002, DOWNLIGHT_RECESS, 48, 1, true), mat.cup);
+    cup.position.set(x, H + DOWNLIGHT_RECESS / 2, z);
+    b.root.add(cup);
+    // 杯底封板（不然從發光面旁的縫看得到天花板上方）＋發光面
+    b.disc(d.at[0], d.at[1], H + DOWNLIGHT_RECESS, r - 0.002, 48, mat.plateWhite);
+    b.glow.push(b.disc(d.at[0], d.at[1], H + DOWNLIGHT_RECESS - 0.001, r * 0.55, 32, mat.glow));
   }
 }
 

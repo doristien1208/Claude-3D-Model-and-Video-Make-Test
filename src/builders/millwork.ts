@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { X, Z } from '../core/units';
-import { CEILING_H as H, type Front, type Rect, type Side } from '../data/layout';
+import { CEILING_H as H, lighting, type Front, type Rect, type Side } from '../data/layout';
 import type { ItemOf } from '../data/query';
 import { rectAlong, rng, worldUV, type Build } from './prims';
 
@@ -130,8 +130,10 @@ export function cabinet(b: Build, it: ItemOf<'cabinet'>): void {
   }
   buildFronts(b, f, it.fronts);
   if (it.underGlow) {
-    // 懸空櫃底部的間接光（燈條內縮）
-    b.glowBox(...R(f, along[0] + 2, along[1] - 2, 2, depth - 2), it.h[0] - 0.005, it.h[0], mat.glowSoft);
+    // 懸空櫃底部的間接光（燈條內縮），往下照地面
+    const g = R(f, along[0] + 2, along[1] - 2, 2, depth - 2);
+    b.glowBox(...g, it.h[0] - 0.005, it.h[0], mat.glowSoft);
+    b.stripLight((g[0] + g[2]) / 2, (g[1] + g[3]) / 2, it.h[0] - 0.006, (along[1] - along[0] - 4) / 100, (depth - 4) / 100, f.hor, 'down', lighting.strips.under);
   }
   b.solid(it.rect);
 }

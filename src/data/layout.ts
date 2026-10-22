@@ -530,43 +530,53 @@ export const items: readonly Item[] = [
 
 /* ---------- 燈位 ---------- */
 
-export interface NightLight {
+export type DownlightKind = 'general' | 'accent' | 'wet';
+/** 崁燈：at 為位置；aim 為重點燈的投射點 [x, y, 高度]（省略則垂直往下） */
+export interface Downlight {
   at: Pt;
-  /** 安裝高度（m） */
-  h: number;
-  /** 光強（cd） */
-  intensity: number;
-  /** 截止距離（m） */
-  distance: number;
+  kind: DownlightKind;
+  aim?: readonly [number, number, number];
 }
 
+/**
+ * 崁燈規格（2700K、Ra 90、白色深杯，遮光角約 30°）；lm 為額定流明，cdPerLm 為正下方光強／流明，beam 為光束角（半強度，度），
+ * cutout 為開孔（m）：
+ *  general：φ100 擴散型約 700 lm，0.51 cd/lm、光束角約 100°（DAIKO 實測；舞光 波爾 100°；KOIZUMI AD7251W27 735 lm 2700K）
+ *  accent：36° 窄光束 810 lm，1.6 cd/lm（舞光 波士 9.5 cm；Philips 36° 實測 1.65 cd/lm）
+ *  wet：浴室與陽台用 IP44，950 lm、40°（Panasonic NNP73185031；cd/lm 依 36°、60° 實測內插）
+ */
+export const DOWNLIGHT = {
+  general: { lm: 700, cdPerLm: 0.51, beam: 100, cutout: 0.1 },
+  accent: { lm: 810, cdPerLm: 1.6, beam: 36, cutout: 0.095 },
+  wet: { lm: 950, cdPerLm: 1.4, beam: 40, cutout: 0.065 },
+} as const;
+/** 深杯深度（m）：發光面在天花板上方 3.5 cm */
+export const DOWNLIGHT_RECESS = 0.035;
+
 export const lighting = {
-  /** 天花板崁燈 */
+  /**
+   * 天花板崁燈（2026-10 依調查調整）：不放在沙發、床鋪、坐著的人頭頂正上方；廚房在檯面前緣上方照工作面；
+   * 書房在書桌前緣；靠牆的離牆 30–40 cm 洗牆；展示書櫃前 30 cm 兩盞重點燈打向櫃面
+   */
   downlights: [
-    [600, 230], [760, 230], [670, 560], [872, 560], [670, 790], [902, 820], [873, 1000], [873, 1100], [965, 1225],
-    [230, 470], [370, 470], [170, 250], [380, 230], [200, 640], [380, 640], [200, 860], [380, 860], [230, 1210],
-    [390, 1200], [715, 960], [715, 1080], [695, 1200], [970, 190],
-  ] as readonly Pt[],
-  /** 夜間 2700K 暖光點光源（目前沒有陰影） */
-  night: [
-    { at: [780, 570], h: 2.3, intensity: 22, distance: 5 },
-    { at: [975, 650], h: 2.45, intensity: 12, distance: 3.5 },
-    { at: [735, 597], h: 1.55, intensity: 7, distance: 3.5 },
-    { at: [710, 324], h: 1.75, intensity: 10, distance: 3.5 },
-    { at: [650, 200], h: 2.3, intensity: 9, distance: 3.5 },
-    { at: [230, 430], h: 2.2, intensity: 11, distance: 3.5 },
-    { at: [170, 230], h: 2.4, intensity: 6, distance: 2.4 },
-    { at: [380, 220], h: 2.4, intensity: 6, distance: 2.4 },
-    { at: [290, 720], h: 2.2, intensity: 11, distance: 3.5 },
-    { at: [240, 1080], h: 2.2, intensity: 10, distance: 3.5 },
-    { at: [715, 990], h: 2.4, intensity: 6, distance: 2.2 },
-    { at: [873, 1050], h: 2.4, intensity: 6, distance: 3 },
-    { at: [975, 1220], h: 2.4, intensity: 7, distance: 2.6 },
-    { at: [970, 190], h: 2.4, intensity: 3, distance: 2.5 },
-    { at: [735, 1210], h: 2.3, intensity: 3, distance: 1.6 },
-    { at: [517, 1095], h: 1.85, intensity: 5, distance: 2.4 },
-    { at: [517, 1225], h: 1.85, intensity: 5, distance: 2.4 },
-  ] as readonly NightLight[],
+    // 廚房檯面、客廳
+    { at: [610, 190], kind: 'accent' }, { at: [750, 190], kind: 'accent' },
+    { at: [670, 560], kind: 'general' }, { at: [872, 560], kind: 'general' }, { at: [770, 855], kind: 'general' }, { at: [902, 820], kind: 'general' },
+    { at: [1023, 805], kind: 'accent', aim: [1053, 805, 1.2] }, { at: [1023, 913], kind: 'accent', aim: [1053, 913, 1.2] },
+    // 短走廊、玄關
+    { at: [873, 1000], kind: 'general' }, { at: [873, 1100], kind: 'general' }, { at: [965, 1225], kind: 'general' },
+    // 主臥、主衛浴
+    { at: [220, 535], kind: 'general' }, { at: [370, 470], kind: 'general' }, { at: [170, 250], kind: 'wet' }, { at: [380, 230], kind: 'wet' },
+    // 書房、客房
+    { at: [230, 715], kind: 'general' }, { at: [375, 715], kind: 'general' }, { at: [200, 860], kind: 'general' }, { at: [380, 860], kind: 'general' },
+    { at: [230, 1210], kind: 'general' }, { at: [390, 1200], kind: 'general' },
+    // 公衛、儲藏室、陽台
+    { at: [715, 960], kind: 'wet' }, { at: [715, 1080], kind: 'wet' }, { at: [695, 1200], kind: 'general' }, { at: [970, 190], kind: 'wet' },
+  ] as readonly Downlight[],
+  /** 燈具流明（2700K）：吊燈 Flos IC S1 用 E14 LED、落地燈 IKEA 建議燈泡、Artemide Tolomeo Micro 壁燈與檯燈、走廊壁燈 KOIZUMI AB52233 */
+  lamps: { pendant: 700, floorLamp: 470, wallLamp: 620, deskLamp: 620, sconce: 505 },
+  /** 燈條每公尺流明：燈溝 COB 1020（Norlux 2700K 10 W/m）、洗簾約 1000（估計）、櫃下與鏡燈 450（4.8 W/m） */
+  strips: { cove: 1020, curtain: 1000, under: 450, mirror: 450 },
 };
 
 /* ---------- 天花板：局部降板與間接燈（2026-10 確認：中央維持 2.80 m，降板下緣 2.60 m 與窗簾盒對齊） ---------- */

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { X, Z } from '../core/units';
-import type { Pt, Rect, Side, TowelColor, TowelHang, TowelKind } from '../data/layout';
+import { lighting, type Pt, type Rect, type Side, type TowelColor, type TowelHang, type TowelKind } from '../data/layout';
 import type { ItemOf } from '../data/query';
 import { BOARD, R, buildFronts, frameOf } from './millwork';
 import { FACING_YAW, gbox, worldUV, type Build } from './prims';
@@ -313,6 +313,7 @@ export function vanity(b: Build, it: ItemOf<'vanity'>): void {
   const [mx1, , mx2, my2] = it.mirror, [m0, m1] = it.mirrorH;
   b.box(it.mirror, m0, m1, mat.mirror, { cast: false });
   b.glowBox(mx1, my2, mx2, my2 + 2, m1, m1 + 0.02);
+  b.stripLight((mx1 + mx2) / 2, my2 + 1, m1 - 0.001, (mx2 - mx1) / 100, 0.02, true, 'down', lighting.strips.mirror);
   // 鏡面即時平面反射（Reflector）：顏色 0.5 線性為原樣反射，略低一點並帶極淡綠＝銀鏡約 86% 反射率
   const w = (mx2 - mx1) / 100, h = m1 - m0;
   const mirror = new Reflector(new THREE.PlaneGeometry(w, h), {
