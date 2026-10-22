@@ -13,7 +13,8 @@ const G = 0.3;          // 門片四周門縫
 const UNDERCUT = 0.008; // 門片底部離地（有門檻石時再加門檻高）
 const THRESHOLD_H = 0.006;
 const STOP_W = 1.2, STOP_D = 1; // 門擋條：凸出門樘 1.2 cm、厚 1 cm
-const HANDLE_H = 1.0, BACKSET = 6.5; // 門把中心高、離門片自由端
+const HANDLE_H = 0.9, BACKSET = 6.5; // 門把中心高（一般 0.9–1.05 m，取下緣）、離門片自由端
+const CLEAR = 0.3;                   // 碰撞檢查的安全距離（px）：門把停在碰到之前 3 mm
 const HINGE_Y = [0.25, 1.05, 1.85];
 
 /** 開口所在牆的局部座標：along 沿牆、across 垂直牆（皆 px） */
@@ -194,7 +195,7 @@ function swingDoor(b: Build, d: Extract<Door, { kind: 'swing' }>, obstacles: Obs
   // 全開角度：先每 1° 找到第一次碰撞，再以 0.25° 回頭細找，停在碰到之前的那一格（等同門擋位置）
   const near = obstacles.filter((o) => o[0] < hx + W + 10 && o[2] > hx - W - 10 && o[1] < hy + W + 10 && o[3] > hy - W - 10);
   const hit = (p: [number, number], h: number) =>
-    near.find((o) => p[0] > o[0] + 0.01 && p[0] < o[2] - 0.01 && p[1] > o[1] + 0.01 && p[1] < o[3] - 0.01 && h > o[4] && h < o[5])?.[6];
+    near.find((o) => p[0] > o[0] - CLEAR && p[0] < o[2] + CLEAR && p[1] > o[1] - CLEAR && p[1] < o[3] + CLEAR && h > o[4] && h < o[5])?.[6];
   const hs = handleSamples(W);
   const collides = (deg: number): string | undefined => {
     const θ = (deg * Math.PI) / 180;
