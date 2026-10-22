@@ -73,6 +73,50 @@ function terryNormalMap(): THREE.Texture {
   return tex;
 }
 
+/**
+ * 玻璃表面的微微起伏（浮法、強化玻璃的滾輪波紋）：可無縫拼接的 fBm 雜訊，換算成法線貼圖。
+ * 一張代表 1.5 m、最大的起伏約半公尺；以半浮點數存，傾斜角不會因 8 位元量化而出現階梯。
+ * slope 為最大傾斜（弧度），只影響反射（玻璃沒有厚度，不折射）。
+ */
+function glassNormal(slope: number): THREE.Texture {
+  const S = 256, TILE = 1.5, hgt = new Float32Array(S * S);
+  let seed = 11, amp = 1;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (const cells of [3, 6, 12]) {
+    const lat = Array.from({ length: cells * cells }, rnd);
+    const L = (i: number, j: number) => lat[(j % cells) * cells + (i % cells)];
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const fx = (x / S) * cells, fy = (y / S) * cells, i = Math.floor(fx), j = Math.floor(fy);
+      const u = fx - i, v = fy - j, su = u * u * (3 - 2 * u), sv = v * v * (3 - 2 * v);
+      const a = L(i, j) + (L(i + 1, j) - L(i, j)) * su, c = L(i, j + 1) + (L(i + 1, j + 1) - L(i, j + 1)) * su;
+      hgt[y * S + x] += amp * (a + (c - a) * sv);
+    }
+    amp *= 0.5;
+  }
+  const h = (x: number, y: number) => hgt[((y + S) % S) * S + ((x + S) % S)];
+  const gx = new Float32Array(S * S), gy = new Float32Array(S * S);
+  let max = 0;
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const k = y * S + x;
+    gx[k] = h(x + 1, y) - h(x - 1, y);
+    gy[k] = h(x, y + 1) - h(x, y - 1);
+    max = Math.max(max, Math.hypot(gx[k], gy[k]));
+  }
+  const data = new Uint16Array(S * S * 4), f = slope / max, H = THREE.DataUtils.toHalfFloat;
+  for (let k = 0; k < S * S; k++) {
+    const nx = -gx[k] * f, ny = -gy[k] * f, l = Math.hypot(nx, ny, 1);
+    data.set([H((nx / l) * 0.5 + 0.5), H((ny / l) * 0.5 + 0.5), H((1 / l) * 0.5 + 0.5), H(1)], k * 4);
+  }
+  const tex = new THREE.DataTexture(data, S, S, THREE.RGBAFormat, THREE.HalfFloatType);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  tex.repeat.set(1 / TILE, 1 / TILE);
+  tex.needsUpdate = true;
+  return tex;
+}
+
 /** 捲起毛巾的端面：一層層之間的螺旋暗線（白底，乘上毛巾顏色） */
 function rollEndTexture(): THREE.Texture {
   const S = 128, c = document.createElement('canvas');
@@ -93,6 +137,9 @@ function rollEndTexture(): THREE.Texture {
   return tex;
 }
 
+/** 玻璃表面最大傾斜（弧度，約 0.46°）：調小，只讓反射有一點點起伏 */
+const GLASS_SLOPE = 0.008;
+
 export function createMaterials(tex: TextureLibrary) {
   const PBR = (name: TexName, tint?: RGB, o: THREE.MeshStandardMaterialParameters = {}) => {
     const m = new THREE.MeshStandardMaterial({
@@ -109,7 +156,7 @@ export function createMaterials(tex: TextureLibrary) {
   };
   const M = (o: THREE.MeshStandardMaterialParameters) =>
     new THREE.MeshStandardMaterial({ roughness: 0.8, metalness: 0, ...o });
-  const terryN = terryNormalMap(), rollEnd = rollEndTexture();
+  const terryN = terryNormalMap(), rollEnd = rollEndTexture(), glassN = glassNormal(GLASS_SLOPE);
   const terry = (color: number, sheenColor: number, map?: THREE.Texture) => new THREE.MeshPhysicalMaterial({
     color, map, roughness: 0.95, normalMap: map ? undefined : terryN, normalScale: new THREE.Vector2(0.6, 0.6),
     sheen: 1, sheenRoughness: 0.6, sheenColor,
@@ -151,7 +198,8 @@ export function createMaterials(tex: TextureLibrary) {
     // 鏡子：銀鏡反射率約 86%（AGC Mirox，EN 1036），玻璃含鐵帶極淡綠；鏡面本身另有即時平面反射
     mirror: M({ color: 0xf0f3f1, roughness: 0.02, metalness: 1 }),
     // 清玻璃（浮法 ior 1.52）：穿透材質，反射不會被透明度一起淡掉；薄片（thickness 0）不折射
-    glass: new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 1, roughness: 0, ior: 1.52, thickness: 0, metalness: 0 }),
+    glass: new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 1, roughness: 0, ior: 1.52, thickness: 0, metalness: 0,
+      normalMap: glassN }),
     // 電視（關機）：OLED 光面，抗反射膜約 1% 反射
     tv: new THREE.MeshPhysicalMaterial({ color: 0x0e0e0e, roughness: 0.05, ior: 1.22 }),
     // 植物葉片（琴葉榕、橡膠樹一類的蠟質葉）
@@ -188,7 +236,7 @@ export function createMaterials(tex: TextureLibrary) {
     // 衛浴霧面玻璃：蝕刻面把窗外的光完全打散，室內看到的是一片均勻亮面，不做穿透
     // （three.js 穿透玻璃後面的穿透物件不會畫，隔著淋浴隔屏看會變成透明窗）；發光亮度由 main.ts 依窗外 HDRI 設定。
     // 室內側：粗糙反射＋少量背向散射
-    frosted: new THREE.MeshPhysicalMaterial({ color: 0x5e6060, roughness: 0.5, ior: 1.52 }),
+    frosted: new THREE.MeshPhysicalMaterial({ color: 0x5e6060, roughness: 0.5, ior: 1.52, normalMap: glassN }),
     // 毛巾（毛圈布）：粗糙 0.95＋絨面光澤，毛圈用法線貼圖；白 #ECE8E1、燕麥 #CBBDA8；捲起來的端面另有螺旋貼圖
     towelWhite: terry(0xece8e1, 0xffffff),
     towelOat: terry(0xcbbda8, 0xe8dfcf),

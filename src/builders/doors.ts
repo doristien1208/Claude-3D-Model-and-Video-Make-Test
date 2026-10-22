@@ -3,7 +3,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { X, Z, toPxX, toPxY } from '../core/units';
 import { doors as doorData, type Door, type Rect, type Side } from '../data/layout';
 import { findOpening, isHorizontal } from '../data/query';
-import { rectAlong, worldUV, type Build, type Solid } from './prims';
+import { needsUV, rectAlong, worldUV, type Build, type Solid } from './prims';
 
 /* ---------- 尺寸（px = cm，高度為 m） ---------- */
 const J = 2;            // 門樘厚
@@ -335,6 +335,8 @@ function slideGlass(b: Build, d: Extract<Door, { kind: 'slideGlass' }>, doors: D
     const [x1, y1, x2, y2] = r;
     const me = new THREE.Mesh(new THREE.BoxGeometry((x2 - x1) / 100, h1 - h0, (y2 - y1) / 100), m);
     me.position.set(X((x1 + x2) / 2), (h0 + h1) / 2, Z((y1 + y2) / 2));
+    // 以全開位置算世界座標 UV，玻璃表面的起伏跟著門扇移動
+    if (needsUV(m)) worldUV(me.geometry, me.position);
     me.castShadow = m !== mat.glass;
     me.receiveShadow = true;
     g.add(me);

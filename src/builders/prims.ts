@@ -42,6 +42,12 @@ export function worldUV(g: THREE.BufferGeometry, o: THREE.Vector3, r?: number): 
   uv.needsUpdate = true;
 }
 
+/** 有貼圖（顏色、法線或 bump）的材質才需要世界座標 UV */
+export const needsUV = (m: THREE.Material): boolean => {
+  const s = m as THREE.MeshStandardMaterial;
+  return !!(s.map || s.normalMap || s.bumpMap);
+};
+
 /** 牆面設備朝向 → 本地 z 軸（離牆方向）在世界座標的旋轉角 */
 export const FACING_YAW: Record<Side, number> = { S: 0, N: Math.PI, E: Math.PI / 2, W: -Math.PI / 2 };
 
@@ -85,7 +91,7 @@ export class Build {
     const g = new THREE.BoxGeometry((b - a) / 100, h1 - h0, (d - c) / 100);
     const me = new THREE.Mesh(g, m);
     me.position.set(X((a + b) / 2), (h0 + h1) / 2, Z((c + d) / 2));
-    if ((m as THREE.MeshStandardMaterial).map) worldUV(g, me.position);
+    if (needsUV(m)) worldUV(g, me.position);
     me.castShadow = opt.cast !== false;
     me.receiveShadow = true;
     this.root.add(me);
@@ -100,7 +106,7 @@ export class Build {
   cyl(cx: number, cy: number, r: number, h0: number, h1: number, m: THREE.Material, opt: CylOpt = {}): THREE.Mesh {
     const me = new THREE.Mesh(new THREE.CylinderGeometry(opt.rTop ?? r, r, h1 - h0, opt.seg || 28), m);
     me.position.set(X(cx), (h0 + h1) / 2, Z(cy));
-    if ((m as THREE.MeshStandardMaterial).map) worldUV(me.geometry, me.position, r);
+    if (needsUV(m)) worldUV(me.geometry, me.position, r);
     me.castShadow = opt.cast !== false;
     me.receiveShadow = true;
     this.root.add(me);
