@@ -85,6 +85,10 @@ export function createMaterials(tex: TextureLibrary) {
     ceramicBeige: M({ color: 0xc9b9a0, roughness: 0.6 }),
     // 門樘陰影縫、嵌入式取手的凹槽
     gap: M({ color: 0x1a1715, roughness: 0.9 }),
+    // 深色鋁框（窗、陽台拉門）
+    alu: M({ color: 0x232120, roughness: 0.4, metalness: 0.6 }),
+    // 衛浴霧面玻璃
+    frosted: new THREE.MeshStandardMaterial({ color: 0xe6eaea, transparent: true, opacity: 0.62, roughness: 0.5, depthWrite: false }),
   };
   for (const [k, m] of Object.entries(mat)) m.name = k;
 

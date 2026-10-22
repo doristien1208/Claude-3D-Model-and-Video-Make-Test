@@ -9,6 +9,7 @@ import * as furniture from './furniture';
 import * as millwork from './millwork';
 import { Build } from './prims';
 import { buildBaseboards } from './trim';
+import { buildWindows } from './windows';
 
 type Builder<T extends ItemType> = (b: Build, it: ItemOf<T>) => void;
 
@@ -72,8 +73,11 @@ export function buildHouse(materials: Materials): House {
   const b = new Build(materials);
   const arch = buildArchitecture(b);
   tagSince(b, 0, '牆體');
-  for (const it of items) buildItem(b, it);
   let from = b.root.children.length;
+  buildWindows(b, arch.ceiling);
+  tagSince(b, from, '窗');
+  for (const it of items) buildItem(b, it);
+  from = b.root.children.length;
   fixtures.downlights(b, lighting.downlights);
   tagSince(b, from, '崁燈');
   from = b.root.children.length;

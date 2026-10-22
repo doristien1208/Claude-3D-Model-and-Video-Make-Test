@@ -105,6 +105,12 @@ export class Build {
   }
 }
 
+/** 以「沿牆 along、垂直牆 across」描述的範圍轉成平面外框（px）；hor 為牆沿 x 方向 */
+export function rectAlong(hor: boolean, a0: number, a1: number, k0: number, k1: number): Rect {
+  const [amin, amax] = [Math.min(a0, a1), Math.max(a0, a1)], [kmin, kmax] = [Math.min(k0, k1), Math.max(k0, k1)];
+  return hor ? [amin, kmin, amax, kmax] : [kmin, amin, kmax, amax];
+}
+
 /** mulberry32：書櫃書本排列用的可重現亂數 */
 export function rng(seed: number): () => number {
   return function () {

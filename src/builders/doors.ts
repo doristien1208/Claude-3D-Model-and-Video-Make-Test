@@ -3,7 +3,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { X, Z, toPxX, toPxY } from '../core/units';
 import { doors as doorData, type Door, type Rect, type Side } from '../data/layout';
 import { findOpening, isHorizontal } from '../data/query';
-import { worldUV, type Build, type Solid } from './prims';
+import { rectAlong, worldUV, type Build, type Solid } from './prims';
 
 /* ---------- 尺寸（px = cm，高度為 m） ---------- */
 const J = 2;            // 門樘厚
@@ -37,10 +37,7 @@ function frameOf(openingId: string): WallFrame {
 /** across 方向的正負號：N/W 為 −1，S/E 為 +1 */
 const sideSign = (s: Side): 1 | -1 => (s === 'S' || s === 'E' ? 1 : -1);
 
-const rectAC = (f: WallFrame, a0: number, a1: number, k0: number, k1: number): Rect => {
-  const [amin, amax] = [Math.min(a0, a1), Math.max(a0, a1)], [kmin, kmax] = [Math.min(k0, k1), Math.max(k0, k1)];
-  return f.hor ? [amin, kmin, amax, kmax] : [kmin, amin, kmax, amax];
-};
+const rectAC = (f: WallFrame, a0: number, a1: number, k0: number, k1: number): Rect => rectAlong(f.hor, a0, a1, k0, k1);
 /** (along, across) px → 平面 (x, y) */
 const planPt = (f: WallFrame, along: number, across: number): [number, number] => (f.hor ? [along, across] : [across, along]);
 /** 平面上 (along, across) 方向向量 → 世界座標 (X, Z) */
@@ -308,28 +305,45 @@ function slideDoor(b: Build, d: Extract<Door, { kind: 'slide' }>, doors: Doors):
   });
 }
 
-/* ---------- 陽台落地拉門（固定片＋活動片；外框在 C2 與窗框一起升級） ---------- */
+/* ---------- 陽台落地拉門：固定片＋活動片，深色鋁框 ---------- */
 
 function slideGlass(b: Build, d: Extract<Door, { kind: 'slideGlass' }>, doors: Doors): void {
   const { mat } = b;
-  const c = d.wallY, h = d.h;
-  b.bx(d.fixed[0], c - 2, d.fixed[1], c + 2, 0, h, mat.glass, { cast: false, solid: true });
-  b.bx(d.fixed[0], c - 2, d.fixed[0] + 4, c + 2, 0, h, mat.black);
-  b.bx(d.fixed[1] - 4, c - 2, d.fixed[1], c + 2, 0, h, mat.black);
-  b.bx(d.fixed[0], c - 2, d.trackEnd, c + 7, h - 0.03, h, mat.black);
-  b.bx(d.fixed[0], c - 2, d.trackEnd, c + 7, 0, 0.03, mat.black);
+  const { s } = frameOf(d.opening);
+  const c = d.wallY, h = d.h, HEAD = 0.05, TRACK = 0.03;
+  // 外框：上框、下軌、起始端立框（另一端直接收進東牆）
+  b.bx(s, c - 2, d.trackEnd, c + 7, h - HEAD, h, mat.alu);
+  b.bx(s, c - 2, d.trackEnd, c + 7, 0, TRACK, mat.alu);
+  b.bx(s, c - 2, d.fixed[0], c + 7, TRACK, h - HEAD, mat.alu);
 
-  // 活動片以全開位置建模，關閉時往 trackEnd 平移
+  // 一片門扇：左右框 4 px、上框 6 cm、下框 8 cm、中間玻璃
+  const panel = (a0: number, a1: number, k0: number, k1: number, add: (r: Rect, h0: number, h1: number, m: THREE.Material) => void) => {
+    const h0 = TRACK, h1 = h - HEAD, kc = (k0 + k1) / 2;
+    add([a0, k0, a0 + 4, k1], h0, h1, mat.alu);
+    add([a1 - 4, k0, a1, k1], h0, h1, mat.alu);
+    add([a0 + 4, k0, a1 - 4, k1], h0, h0 + 0.08, mat.alu);
+    add([a0 + 4, k0, a1 - 4, k1], h1 - 0.06, h1, mat.alu);
+    add([a0 + 4, kc - 0.3, a1 - 4, kc + 0.3], h0 + 0.08, h1 - 0.06, mat.glass);
+  };
+  panel(d.fixed[0], d.fixed[1], c - 2, c + 2, (r, h0, h1, m) => b.box(r, h0, h1, m, { cast: m !== mat.glass }));
+  b.solid([d.fixed[0], c - 2, d.fixed[1], c + 2]);
+
+  // 活動片以全開位置建模，關閉時往 trackEnd 平移；室內側直立把手在東側框
   const g = new THREE.Group();
   b.root.add(g);
-  const parts: [number, number, THREE.Material][] = [[d.active[0], d.active[1], mat.glass], [d.active[0], d.active[0] + 4, mat.black], [d.active[1] - 4, d.active[1], mat.black]];
-  for (const [s, e, m] of parts) {
-    const me = new THREE.Mesh(new THREE.BoxGeometry((e - s) / 100, h, 0.04), m);
-    me.position.set(X((s + e) / 2), h / 2, Z(c + 5));
+  const add = (r: Rect, h0: number, h1: number, m: THREE.Material) => {
+    const [x1, y1, x2, y2] = r;
+    const me = new THREE.Mesh(new THREE.BoxGeometry((x2 - x1) / 100, h1 - h0, (y2 - y1) / 100), m);
+    me.position.set(X((x1 + x2) / 2), (h0 + h1) / 2, Z((y1 + y2) / 2));
     me.castShadow = m !== mat.glass;
     me.receiveShadow = true;
     g.add(me);
-  }
+  };
+  panel(d.active[0], d.active[1], c + 3, c + 7, add);
+  const pa = d.active[1] - 6;
+  add([pa - 0.8, c + 9, pa + 0.8, c + 10.6], 0.85, 1.15, mat.alu);
+  for (const hh of [0.88, 1.12]) add([pa - 0.6, c + 7, pa + 0.6, c + 9], hh - 0.006, hh + 0.006, mat.alu);
+
   const travel = d.trackEnd - d.active[1];
   const ctl: DoorCtl = {
     id: d.id, label: d.label, kind: 'slideGlass', open: d.open,

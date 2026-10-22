@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { X, Z } from '../core/units';
-import { findOpening, isHorizontal, type ItemOf } from '../data/query';
-import type { Build } from './prims';
+import type { ItemOf } from '../data/query';
+import { rectAlong, type Build } from './prims';
+import { windowSpec, winFrame } from './windows';
 
 /** 雙人床，床頭在北側 (y1) */
 export function bed(b: Build, it: ItemOf<'bed'>): void {
@@ -29,15 +30,14 @@ export function rug(b: Build, it: ItemOf<'rug'>): void {
   if (it.inner) b.box(it.inner, 0.012, 0.014, b.mat.rug2, { cast: false });
 }
 
-/** 窗戶兩側的窗簾＋頂部軌道；目前只支援西側外牆（房間在 +x 側） */
+/** 窗簾（收起狀態）：掛在窗簾盒內的軌道上，收在窗框外側，不遮窗 */
 export function curtains(b: Build, it: ItemOf<'curtains'>): void {
-  const { mat } = b;
-  const { wall, opening } = findOpening(it.window);
-  if (isHorizontal(wall) || wall.a[0] !== 70) throw new Error(`curtains：${it.window} 不在西側外牆`);
-  const f = wall.a[0] + wall.t / 2, s = opening.s, e = opening.e;
-  b.bx(f, s - 45, f + 5, s + 5, 0.05, 2.72, mat.linen);
-  b.bx(f, e - 5, f + 5, e + 45, 0.05, 2.72, mat.linen);
-  b.bx(f - 1, s - 50, f + 2, e + 50, 2.72, 2.76, mat.black);
+  const f = winFrame(it.window);
+  if (!windowSpec(it.window)?.curtainBox) throw new Error(`curtains：${it.window} 沒有窗簾盒`);
+  const k0 = f.ci + f.σ * 6, k1 = f.ci + f.σ * 11, W = it.stackW;
+  const panel = (a0: number, a1: number) => b.box(rectAlong(f.hor, a0, a1, k0, k1), 0.02, 2.75, b.mat.linen);
+  if (it.sides !== 'end') panel(f.s - W, f.s);
+  if (it.sides !== 'start') panel(f.e, f.e + W);
 }
 
 /** 書桌：桌板＋四支桌腳（內縮 4 px） */

@@ -64,7 +64,8 @@ export const walls: readonly Wall[] = [
   { id: 'ext-S', a: [70, 1280], b: [1045, 1280], t: 12 },
   { id: 'ext-E', a: [1045, 118], b: [1045, 1280], t: 12, openings: [
     { id: 'rail-balcony-E', s: 132, e: 250, bot: 1.05, top: CEILING_H, kind: 'rail' },
-    { id: 'win-living', s: 305, e: 485, bot: 0.45, top: 2.5, kind: 'window' },
+    // 客廳窗原為 305–485，與電視格柵牆（470 起）重疊 15 cm，2026-10 確認縮短為 305–470
+    { id: 'win-living', s: 305, e: 470, bot: 0.45, top: 2.5, kind: 'window' },
     { id: 'door-main', s: 1185, e: 1275, bot: 0, top: 2.15, kind: 'door' },
   ] },
   // 內牆
@@ -127,6 +128,37 @@ export const doors: readonly Door[] = [
   // 陽台兩片落地拉門：固定片 x 852–947，活動片全開時 x 862–957
   { id: 'balcony', label: '陽台', kind: 'slideGlass', opening: 'door-balcony', wallY: 260, fixed: [852, 947], active: [862, 957], trackEnd: 1040, h: 2.3, open: 1 },
 ];
+
+/* ---------- 窗 ---------- */
+
+/**
+ * 窗型：固定窗＋推射窗（2026-10 確認）。
+ * awning：推射窗扇在下方一條（bottom，高 awningH m）或整扇都是推射（all，用於高窗）。
+ * sill：stone 淺色石材窗台凸出牆面 3 cm；flush 深色石材與牆面平齊（廚房，龍頭離牆只有 1 cm）；tile 衛浴石材收邊。
+ * curtainBox：窗簾盒沿牆的起訖（px），做滿整面牆；深 18 cm、高 20 cm。
+ */
+export interface WindowSpec {
+  opening: string;
+  awning: 'bottom' | 'all';
+  awningH?: number;
+  frosted?: boolean;
+  sill: 'stone' | 'flush' | 'tile';
+  curtainBox?: { from: number; to: number };
+}
+
+export const windowSpecs: readonly WindowSpec[] = [
+  { opening: 'win-mbath', awning: 'all', frosted: true, sill: 'tile' },
+  { opening: 'win-kitchen', awning: 'bottom', awningH: 0.4, sill: 'flush' },
+  // 主臥窗簾盒從床頭格柵牆面（307.5）到主臥／書房隔間牆（560）
+  { opening: 'win-mbed', awning: 'bottom', awningH: 0.5, sill: 'stone', curtainBox: { from: 307.5, to: 560 } },
+  { opening: 'win-study', awning: 'bottom', awningH: 0.45, sill: 'stone', curtainBox: { from: 570, to: 935 } },
+  { opening: 'win-guest', awning: 'bottom', awningH: 0.5, sill: 'stone', curtainBox: { from: 945, to: 1274 } },
+  // 客廳窗簾盒從陽台牆面（264）到電視格柵牆（470）
+  { opening: 'win-living', awning: 'bottom', awningH: 0.5, sill: 'stone', curtainBox: { from: 264, to: 470 } },
+];
+
+/** 窗簾盒尺寸 */
+export const CURTAIN_BOX = { depth: 18, h0: 2.6 };
 
 /* ---------- 收邊 ---------- */
 
@@ -229,7 +261,8 @@ export type Item =
   // 開放書櫃；back 為背板所在側，seed 決定書本排列
   | { id: string; type: 'shelf'; rect: Rect; h: number; shelves: number; back: Side; seed: number }
   | { id: string; type: 'rug'; rect: Rect; material: RugMaterial; inner?: Rect }
-  | { id: string; type: 'curtains'; window: string }
+  // 窗簾掛在窗簾盒內的軌道上；收起時每側寬 stackW（px），sides 為收在哪一側
+  | { id: string; type: 'curtains'; window: string; stackW: number; sides: 'both' | 'start' | 'end' }
   | { id: string; type: 'bathtub'; rect: Rect }
   | { id: string; type: 'showerValve'; at: Pt }
   | { id: string; type: 'showerHead'; head: Pt; from: Pt; r: number }
@@ -273,7 +306,8 @@ export const items: readonly Item[] = [
   { id: 'mbed-lamp-E', type: 'wallLamp', rect: [331, 307.5, 343, 310], h: [1.3, 1.45] },
   { id: 'mbed-shelf', type: 'shelf', rect: [435, 366, 472, 486], h: 2.0, shelves: 5, back: 'E', seed: 21 },
   { id: 'mbed-rug', type: 'rug', rect: [110, 370, 345, 556], material: 'rug2' },
-  { id: 'mbed-curtains', type: 'curtains', window: 'win-mbed' },
+  // 南側到隔間牆只有 40 cm，兩側都收 38 cm
+  { id: 'mbed-curtains', type: 'curtains', window: 'win-mbed', stackW: 38, sides: 'both' },
 
   /* 主衛浴：西側濕區（浴缸＋淋浴）｜玻璃隔屏｜東側乾區（馬桶、洗手台） */
   { id: 'mbath-tub', type: 'bathtub', rect: [80, 135, 250, 210] },
@@ -289,7 +323,8 @@ export const items: readonly Item[] = [
   /* 書房 */
   { id: 'study-low-shelf', type: 'shelf', rect: [76, 625, 115, 825], h: 1.0, shelves: 2, back: 'W', seed: 31 },
   { id: 'study-shelf', type: 'shelf', rect: [178, 900, 428, 935], h: 2.2, shelves: 6, back: 'S', seed: 61 },
-  { id: 'study-curtains', type: 'curtains', window: 'win-study' },
+  // 收在窗框外側，不壓到窗下的低書櫃（625–825）
+  { id: 'study-curtains', type: 'curtains', window: 'win-study', stackW: 45, sides: 'both' },
   { id: 'study-desk', type: 'desk', rect: [178, 678, 428, 772] },
   { id: 'study-monitor', type: 'monitor', rect: [270, 756, 334, 759] },
   { id: 'study-chair', type: 'officeChair', at: [296, 650] },
@@ -305,7 +340,7 @@ export const items: readonly Item[] = [
   { id: 'guest-lamp-E', type: 'wallLamp', rect: [340, 947.5, 350, 950], h: [1.25, 1.4] },
   { id: 'guest-wardrobe', type: 'cabinet', rect: [425, 1035, 485, 1270], h: [0, 2.4], front: 'W', doors: 4, seamH: [0, 2.4], seamIn: 0 },
   { id: 'guest-rug', type: 'rug', rect: [140, 1080, 340, 1240], material: 'rug2' },
-  { id: 'guest-curtains', type: 'curtains', window: 'win-guest' },
+  { id: 'guest-curtains', type: 'curtains', window: 'win-guest', stackW: 45, sides: 'both' },
 
   /* 廚房與中島 */
   { id: 'kitchen-run', type: 'kitchenRun', rect: [528, 131, 793, 191], doors: 4,
@@ -331,6 +366,8 @@ export const items: readonly Item[] = [
   { id: 'armchair', type: 'armchair', at: [892, 808.5], faceTo: [798, 676] },
   { id: 'floor-lamp', type: 'floorLamp', at: [705, 597] },
   { id: 'tv-slat', type: 'slatWall', rect: [1031, 470, 1039, 745] },
+  // 客廳窗南端緊貼電視牆，窗簾只能往北收；北側避開陽台拉門框（到 y 267）
+  { id: 'living-curtains', type: 'curtains', window: 'win-living', stackW: 37, sides: 'start' },
   { id: 'tv-cabinet', type: 'tvCabinet', rect: [987, 520, 1031, 710], h: [0.18, 0.5] },
   { id: 'tv', type: 'tv', rect: [1027, 549, 1030.5, 692], h: [0.95, 1.76] },
   // 展示角：高書櫃貼東牆，矮櫃貼實牆，接成 L 型
