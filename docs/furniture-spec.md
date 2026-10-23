@@ -30,13 +30,13 @@
 
 | 物件 | 參考產品 | 現在 | 建議 | 造型重點 |
 |---|---|---|---|---|
-| 書桌 | [HAY Loop Stand 250](https://royaldesign.co.uk/loop-stand-table-250-cm) | 250 × 94，4 cm 桌板＋4 支方腳 | 250 × 92.5 × 74，桌板 2.4（胡桃木皮） | 兩端黑色三腳支架（含斜撐）、背面理線槽 |
-| 書房椅 | [Vitra / Herman Miller Eames EA 117](https://www.innes.co.uk/products/vitra-eames-ea-117-aluminium-group-office-chair) | 方塊＋圓盤 | 寬 58.4、高 77.5–94.5、座高約 46；五爪腳 Ø76 | 黑色皮革吊帶式椅面、橫向縫線；鋁側框、細扶手 |
-| 螢幕、鍵盤滑鼠 | [Apple Studio Display](https://apple.com/au/studio-display/specs)、Magic Keyboard、Magic Mouse | 64 寬方板 | 面板 62.3 × 36.2 × 3.1；鍵盤 41.9 × 11.5 × 1.1；滑鼠 11.4 × 5.7 × 2.2 | 鋁製彎板支架 |
-| 檯燈 | [Artemide Tolomeo Micro](https://www.lights.co.uk/p/artemide-tolomeo-micro-table-lamp-green-10051108.html) | 圓盤＋細桿＋發光方塊 | 高 37、伸出 45、底座 Ø17 | 兩段鋁臂、小圓錐燈頭 |
-| 吧台椅 ×3 | [HAY About A Stool AAS 32 Low](https://www.miliashop.com/en/stools/2578-about-a-stool-aas-32-hay.html) | 圓盤＋單桿 | 47 × 43 × 75，座高 65 | 胡桃木四腳、矮弧形靠背、黑色腳踏 |
-| 中島吊燈 ×3 | [Muuto Ambit 25](https://www.nedgis.com/en/products/pendant-light-ambit-25-black-o25cm-h15cm-muuto) | Ø26 圓錐、間距 65、下緣 1.82 m | Ø25 × 15；**間距 80、下緣 1.72 m（檯面上 80 cm）**；E14 LED 約 450 lm（燈光計畫原本 700 lm） | 霧黑鋁旋壓燈罩、細吊線、圓形天花座 |
-| 走廊壁燈 ×2 | [Astro Kinzo 260](https://www.mr-resistor.co.uk/product/9332) | 方塊＋發光條 | 26 × 10.5 × 12 | 霧黑方盒，上下出光 |
+| 書桌 | [HAY Loop Stand 250](https://royaldesign.co.uk/loop-stand-table-250-cm)（[型錄](https://hayshop.no/upload_dir/shop/Loop_Stand_Product_fact_sheet.pdf)） | 250 × 94，4 cm 桌板＋4 支方腳 | 250 × 92.5 × 74，桌板 2.4（胡桃木皮、方邊） | 3 cm 黑方管三腳支架 64.5 × 37 × 72，中心離桌端 48.8；側看 A 字（外側兩腳往桌端張、中間往內）；兩支架間支撐框；無斜撐 |
+| 書房椅 | [Vitra Eames EA 117](https://www.smow.com/charles-ray-eames/aluminium-group-ea-117.html) | 方塊＋圓盤 | 座 52.5 × 46.5、座高 46（38.5–50.5）、椅背 40.7、扶手在座面上 26；五爪腳 Ø62（估）、雙輪 Ø6 | 黑色皮革吊帶繃在拋光鋁側框間、熱壓橫縫間距 4.8；鋁扶手＋黑墊 |
+| 螢幕、鍵盤滑鼠 | [Apple Studio Display](https://www.apple.com/studio-display/specs/)、Magic Keyboard、Magic Mouse | 64 寬方板 | 面板 62.3 × 36.2 × 3.1、下緣離桌 11.6、邊框 1.25；鍵盤 41.9 × 11.5 × 0.41–1.09；滑鼠 11.35 × 5.71 × 2.16 | 鋁彎板支架（約 18 寬、深 16.8，接在面板背面離桌約 27） |
+| 檯燈 | [Artemide Tolomeo Micro](https://static.dieter-horn.de/images/produkte/artemide/artemide-tolomeo-micro-led-tischleuchte-2.pdf) | 圓盤＋細桿＋發光方塊 | 常用姿勢高 37、伸出 45；底座 Ø17；燈罩 Ø11；LED 620 lm；**底座移到桌面右後角（398, 755）** | 黑色兩段臂（下 30、上 31、尾端 8，估）、拉線、圓錐燈頭 |
+| 吧台椅 ×3 | [HAY About A Stool AAS 32 Low](https://www.webo-kobe.com/items/furniture/chair/hay_stool/AAS_32_Product_fact_sheet.pdf) | 圓盤＋單桿 | 落地 47 × 43、高 75、座高 65、座深 35；腳踏離地 23 | 胡桃木模壓腳（4.5 × 2）外張、座下牽板、包住後半圈的矮靠背、黑鋼管四邊腳踏 |
+| 中島吊燈 ×3 | [Muuto Ambit 25](https://royaldesign.co.uk/ambit-pendant-o25-cm) | Ø26 圓錐、間距 65、下緣 1.82 m | Ø25 × 15；**間距 80（x 630／710／790）、下緣 1.72 m（檯面上 80 cm）**；E14 LED 約 450 lm（原本 700 lm） | 霧黑手工上漆旋壓鋁燈罩、內側白、Ø4 短頸、黑色橡膠吊線、Ø9 × 5.6 天花座 |
+| 走廊壁燈 ×2 | Astro Kinzo 260（已停產，只當參考） | 方塊＋發光條 | 高 26 × 寬 10.5 × 出牆 12，中心 1.8 m；黑色款 449 lm（原本 505） | 霧黑方邊鋁盒，上下開口各一道約 60° 光束洗牆 |
 
 ## 第 4 批：陳設
 

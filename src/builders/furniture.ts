@@ -11,24 +11,6 @@ export function rug(b: Build, it: ItemOf<'rug'>): void {
   if (it.inner) b.box(it.inner, h, h + 0.001, b.mat.rug2, { cast: false });
 }
 
-/** 書桌：桌板＋四支桌腳（內縮 4 px） */
-export function desk(b: Build, it: ItemOf<'desk'>): void {
-  const { mat } = b;
-  const [x1, y1, x2, y2] = it.rect;
-  b.box(it.rect, 0.72, 0.76, mat.walnut, { solid: true });
-  for (const [x, y] of [[x1 + 4, y1 + 4], [x2 - 8, y1 + 4], [x1 + 4, y2 - 8], [x2 - 8, y2 - 8]]) b.bx(x, y, x + 4, y + 4, 0, 0.72, mat.black);
-}
-
-/** 書房椅：坐北朝南 */
-export function officeChair(b: Build, it: ItemOf<'officeChair'>): void {
-  const { mat } = b;
-  const [x, y] = it.at;
-  b.cyl(x, y, 0.24, 0.03, 0.06, mat.black);
-  b.cyl(x, y, 0.025, 0.06, 0.45, mat.black);
-  b.bx(x - 24, y - 22, x + 24, y + 22, 0.45, 0.52, mat.chair);
-  b.bx(x - 24, y - 26, x + 24, y - 18, 0.52, 1.02, mat.chair);
-}
-
 /**
  * 水平 L 形或任意多邊形的軟包塊：平面 pts（公尺）、y0–y1，角圓 r、上下緣倒圓 bevel。
  * r 要比 bevel 大：r186 的 ExtrudeGeometry 拿內縮 bevel 後的輪廓做三角化，圓角縮成同一點會讓 earcut 拉出跨過缺角的三角形。
@@ -243,11 +225,61 @@ export function armchair(b: Build, it: ItemOf<'armchair'>): void {
   b.solids.push([X(x) - 0.38, Z(y) - 0.38, X(x) + 0.38, Z(y) + 0.38]);
 }
 
-/** 吧台椅 */
+/** HAY About A Stool AAS 32 Low 尺寸（見 barStool） */
+/** HAY 型錄：落地 47 × 43、座高 65、靠背頂在座面上 10、腳踏離地 23；座殼約 41 × 37（估）、腳 4.5 × 2 模壓夾板（估）、腳踏鋼管 Ø1.8（估） */
+const STOOL = { seatH: 0.65, backH: 0.75, seatW: 0.41, seatD: 0.37, footW: 0.47, footD: 0.43, legW: 0.045, legT: 0.022, ringH: 0.23, back: 0.012 };
+
+/**
+ * 吧台椅，參考 HAY About A Stool AAS 32 Low（Hee Welling）：47 × 43 × 75、座高 65。
+ * 胡桃木四腳往外微張、座面下四片牽板；模壓木皮座面，後半圈升起一道矮弧形靠背（中間 75、兩側較低）；
+ * 黑色粉體烤漆鋼管腳踏框。正面朝北（中島），靠背在南。
+ */
 export function barStool(b: Build, it: ItemOf<'barStool'>): void {
   const { mat } = b;
-  const [x, y] = it.at;
-  b.cyl(x, y, 0.2, 0.64, 0.7, mat.leather);
-  b.cyl(x, y, 0.025, 0, 0.64, mat.black);
-  b.cyl(x, y, 0.17, 0, 0.02, mat.black);
+  const [x, y] = it.at, S = STOOL;
+  const g = new THREE.Group();
+  g.position.set(X(x), 0, Z(y));
+  b.root.add(g);
+  const top = S.seatH - 0.015;
+  // 椅腳：座面下角往地面外張
+  const legTop = (sx: number, sz: number) => new THREE.Vector3(sx * (S.seatW / 2 - 0.03), top - 0.005, sz * (S.seatD / 2 - 0.03));
+  const legBot = (sx: number, sz: number) => new THREE.Vector3(sx * (S.footW / 2 - S.legW / 2), 0, sz * (S.footD / 2 - S.legT / 2));
+  const corners: [number, number][] = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+  for (const [sx, sz] of corners) beam(g, legTop(sx, sz), legBot(sx, sz), S.legW, S.legT, mat.walnut, 0.006);
+  // 座下牽板
+  for (const [w, d, px, pz] of [[S.seatW - 0.06, 0.018, 0, -(S.seatD / 2 - 0.04)], [S.seatW - 0.06, 0.018, 0, S.seatD / 2 - 0.04],
+    [0.018, S.seatD - 0.06, -(S.seatW / 2 - 0.04), 0], [0.018, S.seatD - 0.06, S.seatW / 2 - 0.04, 0]] as const) {
+    const ap = gbox(g, w, 0.045, d, px, top - 0.03, pz, mat.walnut, 0.003);
+    worldUV(ap.geometry, ap.position);
+  }
+  // 座面（模壓木皮，中間微凹）
+  const seat = add(g, cushion(S.seatW, S.seatD, 0.015, { e: 0.007, r: 0.06, crown: -0.008 }), mat.walnut, 0, top, 0);
+  worldUV(seat.geometry, seat.position);
+  // 靠背：沿座面後半圈的弧形板，頂緣中間高、往兩側降低
+  const n = 24, outer: THREE.Vector2[] = [], inner: THREE.Vector2[] = [];
+  for (let i = 0; i <= n; i++) {
+    const a = Math.PI * (i / n);   // 0 = 東側、π/2 = 正後方、π = 西側
+    const rx = S.seatW / 2 - 0.005, rz = S.seatD / 2 - 0.005;
+    outer.push(new THREE.Vector2(rx * Math.cos(a), rz * Math.sin(a)));
+    inner.push(new THREE.Vector2((rx - S.back) * Math.cos(a), (rz - S.back) * Math.sin(a)));
+  }
+  const bandGeo = slab(new THREE.Shape([...outer, ...inner.reverse()]), S.backH - S.seatH + 0.01, 0.003);
+  const p = bandGeo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    if (p.getY(i) < 0.02) continue;
+    const a = Math.atan2(p.getZ(i), p.getX(i)), k = 0.55 + 0.45 * Math.sin(Math.max(0, a));
+    p.setY(i, p.getY(i) * k);
+  }
+  bandGeo.computeVertexNormals();
+  const band = add(g, bandGeo, mat.walnut, 0, S.seatH - 0.01, 0);
+  worldUV(band.geometry, band.position);
+  // 腳踏：黑色鋼管框繞四腳
+  const ring = corners.map(([sx, sz]) => legTop(sx, sz).lerp(legBot(sx, sz), 1 - S.ringH / (top - 0.005)));
+  for (let i = 0; i < 4; i++) {
+    const a = ring[i], c = ring[(i + 1) % 4], dir = c.clone().sub(a);
+    const tube = add(g, new THREE.CylinderGeometry(0.009, 0.009, dir.length() + S.legT, 12), mat.black);
+    tube.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+    tube.position.copy(a).add(c).multiplyScalar(0.5);
+  }
+  b.solids.push([X(x) - S.footW / 2, Z(y) - S.footD / 2, X(x) + S.footW / 2, Z(y) + S.footD / 2]);
 }

@@ -304,9 +304,11 @@ export type Item =
   | { id: string; type: 'tray'; rect: Rect; h: number }
   | { id: string; type: 'bathAccessory'; kind: 'pumpBottle' | 'tumbler' | 'succulent' | 'candle'; at: Pt; h: number }
   | { id: string; type: 'desk'; rect: Rect }
-  | { id: string; type: 'monitor'; rect: Rect }
-  | { id: string; type: 'officeChair'; at: Pt }
-  | { id: string; type: 'deskLamp'; at: Pt }
+  // 桌上螢幕（含鍵盤滑鼠）：at 為面板中心、facing 為螢幕朝向
+  | { id: string; type: 'monitor'; at: Pt; facing: Side }
+  | { id: string; type: 'officeChair'; at: Pt; faceTo: Pt }
+  // 檯燈：at 為底座中心、h 為桌面高，head 為燈頭頂端（平面）、headH 為其高度
+  | { id: string; type: 'deskLamp'; at: Pt; h: number; head: Pt; headH: number }
   // 一般櫃體；front 為櫃門面向，doors 為門片數（畫分割線）
   // 系統櫃：櫃體外框 rect、高度 h、正面朝向 front；fronts 描述正面的門片分割；plinth 為內縮踢腳高（m）；
   // underGlow 為懸空櫃底部的間接燈
@@ -330,7 +332,7 @@ export type Item =
   | { id: string; type: 'vase'; at: Pt; r: number; h: HRange }
   | { id: string; type: 'storageBox'; rect: Rect; h: number }
   // 走廊壁燈；at 為牆面上的位置（x 為牆面）
-  | { id: string; type: 'sconce'; at: Pt; h: HRange }
+  | { id: string; type: 'sconce'; at: Pt; facing: Side; h: number }
 ;
 
 /**
@@ -429,10 +431,12 @@ export const items: readonly Item[] = [
   { id: 'study-shelf', type: 'shelf', rect: [178, 900, 428, 935], h: 2.2, shelves: 6, back: 'S', seed: 61 },
   // 窗下有 1.0 m 高的低書櫃：短簾，下緣停在書櫃上方 1.5 cm
   { id: 'study-curtains', type: 'curtains', label: '書房', window: 'win-study', sides: 'both', bottom: 1.015 },
-  { id: 'study-desk', type: 'desk', rect: [178, 678, 428, 772] },
-  { id: 'study-monitor', type: 'monitor', rect: [270, 756, 334, 759] },
-  { id: 'study-chair', type: 'officeChair', at: [296, 650] },
-  { id: 'study-lamp', type: 'deskLamp', at: [400, 695] },
+  // HAY Loop Stand 250 × 92.5（使用者在北側）
+  { id: 'study-desk', type: 'desk', rect: [178, 679, 428, 771.5] },
+  { id: 'study-monitor', type: 'monitor', at: [302, 752], facing: 'N' },
+  { id: 'study-chair', type: 'officeChair', at: [302, 650], faceTo: [302, 720] },
+  // Tolomeo Micro：底座在桌面右後角（螢幕右邊），燈頭伸到鍵盤右前方上方
+  { id: 'study-lamp', type: 'deskLamp', at: [398, 755], h: 0.74, head: [369.5, 720], headH: 1.07 },
   { id: 'study-rug', type: 'rug', rect: [150, 640, 410, 820], material: 'rug' },
 
   /* 客房 */
@@ -477,9 +481,10 @@ export const items: readonly Item[] = [
   { id: 'stool-1', type: 'barStool', at: [650, 394] },
   { id: 'stool-2', type: 'barStool', at: [731, 394] },
   { id: 'stool-3', type: 'barStool', at: [811, 394] },
-  { id: 'pendant-1', type: 'pendant', at: [645, 324] },
+  // Muuto Ambit 25 ×3：中島中心兩側、間距 80，燈罩下緣 1.72（檯面 0.92 上 80 cm）
+  { id: 'pendant-1', type: 'pendant', at: [630, 324] },
   { id: 'pendant-2', type: 'pendant', at: [710, 324] },
-  { id: 'pendant-3', type: 'pendant', at: [775, 324] },
+  { id: 'pendant-3', type: 'pendant', at: [790, 324] },
 
   /* 小陽台 */
   { id: 'balcony-plant', type: 'plant', at: [1005, 192], potR: 0.22, potH: 0.45, leafR: 0.42, leafSY: 1.25, leafY: 0.95 },
@@ -533,8 +538,9 @@ export const items: readonly Item[] = [
   { id: 'storage-box-1', type: 'storageBox', rect: [684, 1220, 732, 1246], h: 0.3 },
   { id: 'storage-box-2', type: 'storageBox', rect: [686, 1250, 731, 1271], h: 0.25 },
   // 客房前走廊壁燈：裝在客房側牆面，上下洗牆
-  { id: 'hall-sconce-1', type: 'sconce', at: [495.5, 1095], h: [1.6, 2.0] },
-  { id: 'hall-sconce-2', type: 'sconce', at: [495.5, 1225], h: [1.6, 2.0] },
+  // Astro Kinzo 260（26 高）：中心 1.8 m，與原本位置相同
+  { id: 'hall-sconce-1', type: 'sconce', at: [495.5, 1095], facing: 'E', h: 1.8 },
+  { id: 'hall-sconce-2', type: 'sconce', at: [495.5, 1225], facing: 'E', h: 1.8 },
 
   /* 玄關 */
   // 玄關鞋櫃：嵌進實牆量體、正面與牆面齊平（2026-10 確認）；懸空 15 cm＋底部間接光；中段開放層格放鑰匙，
@@ -591,8 +597,8 @@ export const lighting = {
     // 公衛、儲藏室、陽台
     { at: [715, 960], kind: 'wet' }, { at: [715, 1080], kind: 'wet' }, { at: [695, 1200], kind: 'general' }, { at: [970, 190], kind: 'wet' },
   ] as readonly Downlight[],
-  /** 燈具流明（2700K）：吊燈 Flos IC S1 用 E14 LED、落地燈 IKEA 建議燈泡、Artemide Tolomeo Micro 壁燈與檯燈、走廊壁燈 KOIZUMI AB52233 */
-  lamps: { pendant: 700, floorLamp: 470, wallLamp: 620, deskLamp: 620, sconce: 505 },
+  /** 燈具流明（2700K）：吊燈 Muuto Ambit 25 用 E14 LED 約 450 lm、落地燈 IKEA 建議燈泡、Artemide Tolomeo Micro 壁燈與檯燈（LED 620 lm）、走廊壁燈 Astro Kinzo 260 黑（449 lm） */
+  lamps: { pendant: 450, floorLamp: 470, wallLamp: 620, deskLamp: 620, sconce: 449 },
   /** 燈條每公尺流明：燈溝 COB 1020（Norlux 2700K 10 W/m）、洗簾約 1000（估計）、櫃下與鏡燈 450（4.8 W/m） */
   strips: { cove: 1020, curtain: 1000, under: 450, mirror: 450 },
 };

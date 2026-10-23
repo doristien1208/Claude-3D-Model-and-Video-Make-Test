@@ -14,10 +14,8 @@ export const TINTS = {
   stoneWarm: [0.797, 0.803, 0.783],
   linen: [1.607, 1.632, 1.615],
   duvet: [1.228, 1.193, 1.115],
-  leather: [0.784, 0.855, 0.943],
   rug: [0.693, 0.685, 0.734],
   rug2: [2.287, 2.452, 2.519],
-  chair: [0.085, 0.082, 0.083],
 } as const satisfies Record<string, RGB>;
 
 /** 書櫃陳列師常用的書色：象牙、沙色、燕麥、灰褐、炭灰，加一兩本鏽紅、灰綠（去掉書衣、色塊分群） */
@@ -178,7 +176,6 @@ export function createMaterials(tex: TextureLibrary) {
     headboard: cloth('boucle', [0.226, 0.147, 0.104], 0x4a3d33),
     // 歐式方枕：燕麥色粗麻
     bedOat: cloth('roughLinen', [1.3, 1.09, 0.79], 0xd8cbb5),
-    leather: PBR('leather', TINTS.leather),
     // 植鞣鞍皮（深咖啡）：西班牙椅
     saddle: PBR('leather', [0.64, 0.67, 0.66]),
     ochre: cloth('roughLinen', [1.05, 0.548, 0.195], 0x9c6a3c),
@@ -187,7 +184,8 @@ export function createMaterials(tex: TextureLibrary) {
     wool: cloth('fabric', [0.26, 0.21, 0.18], 0x6a5d55),
     rug: PBR('rug', TINTS.rug),
     rug2: PBR('rug', TINTS.rug2),
-    chair: PBR('fabric', TINTS.chair),
+    // 黑色皮革（Eames 鋁框椅吊帶）
+    chair: PBR('leather', [0.044, 0.126, 0.31]),
     // 衛浴陶瓷（施釉瓷，physicallybased.info 實測 "Porcelain"）
     white: new THREE.MeshPhysicalMaterial({ color: 0xe0e0dd, roughness: 0.04, ior: 1.5 }),
     // 壓克力浴缸（PMMA ior 1.49）
@@ -221,6 +219,10 @@ export function createMaterials(tex: TextureLibrary) {
     // 深色鋁框（窗、陽台拉門）
     // 不鏽鋼（水槽）
     steel: M({ color: 0xc7c9c9, roughness: 0.35, metalness: 1 }),
+    // 拋光鋁（Eames 鋁框椅側框、五爪腳）
+    chrome: M({ color: 0xd9dbdc, roughness: 0.15, metalness: 1 }),
+    // 噴砂陽極鋁（Apple 螢幕、鍵盤）
+    aluminium: M({ color: 0xc4c6c8, roughness: 0.45, metalness: 1 }),
     // 冰箱玻璃門板（深灰光面）
     fridgeGlass: new THREE.MeshPhysicalMaterial({ color: 0x232526, roughness: 0.12, ior: 1.5 }),
     // 深古銅陽極鋁（Tiger Drylac Dark Bronze #4E4542；陽極處理以金屬建模）

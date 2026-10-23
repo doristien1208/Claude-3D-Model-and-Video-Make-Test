@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { X, Z } from '../core/units';
 import type { Side } from '../data/layout';
 import type { ItemOf } from '../data/query';
-import { FACING_YAW, add, gbox, lathe, leanOn, rbox, worldUV, type Build } from './prims';
+import { tolomeoArm } from './fixtures';
+import { FACING_YAW, add, gbox, leanOn, rbox, worldUV, type Build } from './prims';
 import { cushion, pillow, samples, thickGrid } from './shapes';
 
 /*
@@ -154,32 +155,5 @@ export function wallLamp(b: Build, it: ItemOf<'wallLamp'>): void {
   // 壁座圓盤 Ø9.8、厚 1.2；U 形夾座伸出 4 cm
   add(plate, new THREE.CylinderGeometry(0.049, 0.049, 0.012, 40).rotateX(Math.PI / 2), mat.steel, 0, 0, 0.006);
   for (const s of [-1, 1]) gbox(plate, 0.004, 0.026, 0.035, s * 0.011, 0, 0.03, mat.steel, 0.0015);
-  const pivot = base.clone().addScaledVector(out, 0.04);
-  // 兩段臂：肘在樞軸與燈頭連線的上方（餘弦定理）
-  const A1 = 0.3, A2 = 0.32, toHead = head.clone().sub(pivot), dist = Math.min(toHead.length(), A1 + A2 - 0.01);
-  const u = toHead.normalize(), up = V(0, 1, 0), n = up.clone().addScaledVector(u, -up.dot(u)).normalize();
-  const ca = (A1 * A1 + dist * dist - A2 * A2) / (2 * A1 * dist), sa = Math.sqrt(Math.max(0, 1 - ca * ca));
-  const elbow = pivot.clone().addScaledVector(u, A1 * ca).addScaledVector(n, A1 * sa);
-  const tube = (a: THREE.Vector3, c: THREE.Vector3, r: number, m: THREE.Material) => {
-    const dir = c.clone().sub(a), me = add(b.root, new THREE.CylinderGeometry(r, r, dir.length(), 12), m);
-    me.quaternion.setFromUnitVectors(V(0, 1, 0), dir.normalize());
-    me.position.copy(a).add(c).multiplyScalar(0.5);
-    return me;
-  };
-  const tail = elbow.clone().addScaledVector(elbow.clone().sub(head).normalize(), 0.045);
-  tube(pivot, elbow, 0.0055, mat.black);
-  tube(tail, head, 0.0055, mat.black);
-  add(b.root, new THREE.SphereGeometry(0.009, 16, 12), mat.steel, elbow.x, elbow.y, elbow.z);
-  // 拉線：在臂的上方 1.2 cm
-  const off = (p: THREE.Vector3) => p.clone().addScaledVector(n, 0.012);
-  tube(off(pivot), off(elbow), 0.0006, mat.steel);
-  tube(off(tail), off(head), 0.0006, mat.steel);
-  // 燈頭：上臂末端接在燈頭頂，開口朝下、微向外
-  const shade = new THREE.Group();
-  shade.position.copy(head);
-  const flat = head.clone().sub(pivot).setY(0).normalize();
-  shade.quaternion.setFromUnitVectors(V(0, -1, 0), V(0, -1, 0).addScaledVector(flat, 0.3).normalize());
-  b.root.add(shade);
-  add(shade, lathe([[0.012, 0.012], [0.018, 0], [0.054, -0.115], [0.0525, -0.115], [0.0165, -0.002], [0.0105, 0.01]], 40), mat.black);
-  b.glow.push(add(shade, new THREE.CircleGeometry(0.03, 24).rotateX(Math.PI / 2), mat.glowSoft, 0, -0.06, 0, false));
+  tolomeoArm(b, base.clone().addScaledVector(out, 0.04), head, 0.3, 0.32);
 }

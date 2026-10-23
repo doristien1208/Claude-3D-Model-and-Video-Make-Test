@@ -105,9 +105,9 @@ export class Lighting {
     for (const it of items) {
       switch (it.type) {
         case 'pendant': {
-          // 金屬燈罩往下開口：燈泡在罩口上方，約 150° 往下照
+          // Ambit 25：燈泡在罩口上方 6 cm，約 150° 往下照
           const a = 75 * DEG;
-          spot(X(it.at[0]), 1.86, Z(it.at[1]), X(it.at[0]), 0, Z(it.at[1]), a, L.pendant / (Math.PI * (1 - Math.cos(a))), 'lamp');
+          spot(X(it.at[0]), 1.78, Z(it.at[1]), X(it.at[0]), 0, Z(it.at[1]), a, L.pendant / (Math.PI * (1 - Math.cos(a))), 'lamp');
           break;
         }
         case 'floorLamp':
@@ -121,15 +121,19 @@ export class Lighting {
           break;
         }
         case 'deskLamp': {
-          // 檯燈燈頭在底座前方 11 cm、高 1.12 m，往下照桌面
-          const a = 55 * DEG, x = X(it.at[0]), z = Z(it.at[1] + 11);
-          spot(x, 1.12, z, x, 0, z, a, L.deskLamp / (Math.PI * (1 - Math.cos(a))), 'lamp');
+          // Tolomeo 燈頭往下照桌面
+          const a = 55 * DEG, x = X(it.head[0]), z = Z(it.head[1]);
+          spot(x, it.headH - 0.06, z, x, 0, z, a, L.deskLamp / (Math.PI * (1 - Math.cos(a))), 'lamp');
           break;
         }
-        case 'sconce':
-          // 走廊壁燈裝在西側牆面、朝東，上下洗牆
-          point(X(it.at[0] + 5), (it.h[0] + it.h[1]) / 2, Z(it.at[1]), L.sconce);
+        case 'sconce': {
+          // Kinzo 260：盒子只有上下開口，一半往上、一半往下洗牆（光源在開口內 3 cm、離牆 6 cm，光束約 60°）
+          const o = { N: [0, -6], S: [0, 6], E: [6, 0], W: [-6, 0] }[it.facing], a = 30 * DEG;
+          const x = X(it.at[0] + o[0]), z = Z(it.at[1] + o[1]), cd = L.sconce / 2 / (Math.PI * (1 - Math.cos(a)));
+          spot(x, it.h + 0.1, z, x, it.h + 2, z, a, cd, 'lamp');
+          spot(x, it.h - 0.1, z, x, it.h - 2, z, a, cd, 'lamp');
           break;
+        }
       }
     }
   }

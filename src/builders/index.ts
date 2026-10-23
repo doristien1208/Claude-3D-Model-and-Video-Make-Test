@@ -10,6 +10,7 @@ import { buildDoors, collectObstacles, type Doors } from './doors';
 import * as fixtures from './fixtures';
 import * as furniture from './furniture';
 import * as millwork from './millwork';
+import * as study from './study';
 import { Build } from './prims';
 import { buildCoves } from './ceiling';
 import { buildDevices } from './devices';
@@ -31,8 +32,8 @@ const registry: { [T in ItemType]: Builder<T> } = {
   nightstand: bedroom.nightstand,
   rug: furniture.rug,
   curtains,
-  desk: furniture.desk,
-  officeChair: furniture.officeChair,
+  desk: study.desk,
+  officeChair: study.officeChair,
   sofaL: furniture.sofaL,
   coffeeTable: furniture.coffeeTable,
   armchair: furniture.armchair,
@@ -56,7 +57,7 @@ const registry: { [T in ItemType]: Builder<T> } = {
   pendant: fixtures.pendant,
   sconce: fixtures.sconce,
   tv: fixtures.tv,
-  monitor: fixtures.monitor,
+  monitor: study.monitor,
   fridge: fixtures.fridge,
   plant: decor.plant,
   vase: decor.vase,
