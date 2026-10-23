@@ -10,6 +10,7 @@ import { createMaterials } from './materials/library';
 import { TextureLibrary } from './materials/textures';
 import { EnvProbes } from './render/envProbes';
 import { LightMask } from './render/lightMask';
+import { mergeStatic } from './render/mergeStatic';
 import { createRenderer } from './render/renderer';
 import { WindowView } from './render/windowView';
 import { createDock, showWebGLError, type Mode } from './ui/dock';
@@ -33,6 +34,12 @@ const lights = new Lighting(scene, renderer, materials.mat, house.build.areaLigh
 // 每區環境反射探針；日夜切換時發光強度會整體改變的材質不複製。同一批材質再加上燈光遮罩（燈只照亮所在空間）
 const lightMask = new LightMask();
 const probes = new EnvProbes(renderer, scene, house.build.root, new Set([materials.mat.glow, materials.mat.glowSoft]), (s) => lightMask.patch(s));
+// 探針已依區域分好材質，接著合併靜態物件（會動的門、窗簾、鏡面、霧面玻璃不合併；天花板群組各自合併）；?nomerge 可關閉
+if (!new URLSearchParams(location.search).has('nomerge')) {
+  const skip = new Set<THREE.Object3D>([...house.build.reflectors, ...house.build.frosted.map((f) => f.mesh), house.ceiling]);
+  const r1 = mergeStatic(house.build.root, skip), r2 = mergeStatic(house.ceiling, new Set(skip));
+  console.info(`合併靜態物件：${r1.before + r2.before} → ${r1.after + r2.after} 個 mesh`);
+}
 lightMask.update(scene);
 
 /* ---------- 窗外景觀（台中實拍照片；先跑 npm run fetch:backplates） ---------- */
@@ -89,8 +96,13 @@ function probeState(): () => void {
     renderer!.clippingPlanes = clip;
     house.ceiling.visible = ceil;
     applyOutdoor(mode === 'walk');
-    for (const r of house.build.reflectors) r.visible = true;
+    applyMirrors();
   };
+}
+
+/** 鏡面即時反射每格都要把場景再畫一次：只在漫遊時開，俯瞰時看到的是底下的金屬鏡板（環境探針反射） */
+function applyMirrors(): void {
+  for (const r of house.build.reflectors) r.visible = mode === 'walk';
 }
 
 const BLACK = new THREE.Color(0);
@@ -135,6 +147,7 @@ function setMode(m: Mode): void {
   camera.updateProjectionMatrix();
   dock.showMode(m);
   applyOutdoor(m === 'walk');
+  applyMirrors();
   applyCut();
   // 剖切開關與天花板顯示會改變著色器組合
   if (probesReady) compileThenRender();

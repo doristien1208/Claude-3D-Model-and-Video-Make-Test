@@ -140,6 +140,7 @@ export function curtains(b: Build, it: ItemOf<'curtains'>): void {
     const L = LAYERS[name], across = f.ci + f.σ * L.track, m = name === 'sheer' ? b.mat.sheer : b.mat.drape;
     const add = (anchor: number, dir: 1 | -1, reach: number) => {
       const p = new WavePanel(f.hor, across, f.σ, anchor, dir, reach, L, bottom, m);
+      p.mesh.userData.dynamic = true;
       b.root.add(p.mesh);
       panels[name].push(p);
     };

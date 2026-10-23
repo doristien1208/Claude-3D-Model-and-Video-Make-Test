@@ -15,6 +15,7 @@ npm run dev
 `fetch:backplates` 會從 Wikimedia Commons 下載窗外景觀用的 4 張台中市景照片（各約 3–4 MB）到 `public/backplates/`，不納入版本控制；沒有這些檔案時窗外會是純色。
 
 - `http://localhost:5173/`：模型本體（俯瞰／漫遊、日夜、剖切、房間跳轉、小地圖；左側參數面板可開關各扇門）
+- `http://localhost:5173/?nomerge`：不合併靜態物件（除錯、逐件檢查時用；平常會把同區同材質的靜態物件合併，繪製呼叫從兩千多次降到約三百次）
 - `http://localhost:5173/compare.html`：參考版與新版並排對照（鏡頭同步，也可切換 A/B 疊圖）
 - `http://localhost:5173/tools/verify/harness.html`：自動比對幾何與像素。執行前先跑 `npm run verify:prep`，產生加了匯出功能的參考版副本
 

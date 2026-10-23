@@ -7,6 +7,8 @@ import type { Mat } from '../materials/library';
 /** 2700K 暖光（相機白平衡偏暖時的顏色） */
 const WARM = 0xffb978;
 const DEG = Math.PI / 180;
+/** 白天太陽強度（參考版數值） */
+const SUN = 3.2;
 
 /**
  * 夜間曝光依相機 EV（ISO 100）：場景平均亮度 L = 2^(EV−3) cd/m² 落在 18% 灰；
@@ -48,7 +50,7 @@ const coneAngle = (beamDeg: number) => Math.acos(2 * Math.cos((beamDeg / 2) * DE
 
 export class Lighting {
   readonly hemi = new THREE.HemisphereLight(0xdfe6ea, 0x6e6052, 1);
-  readonly sun = new THREE.DirectionalLight(0xfff1df, 3.2);
+  readonly sun = new THREE.DirectionalLight(0xfff1df, SUN);
   /** 所有夜間燈具（崁燈、吊燈、落地燈、壁燈、檯燈），放在同一群組，順序固定 */
   readonly fixtures: Fixture[] = [];
   private readonly scene: THREE.Scene;
@@ -143,7 +145,11 @@ export class Lighting {
     this.hemi.intensity = p.hemi.intensity;
     this.hemi.color.set(p.hemi.sky);
     this.hemi.groundColor.set(p.hemi.ground);
-    this.sun.visible = p.sun;
+    // 太陽晚上不移除、只把強度歸零：燈數不變，所有材質不必為日夜各編一套著色器（每套約 127 KB × 數十個）；
+    // 陰影圖晚上停止更新
+    this.sun.intensity = p.sun ? SUN : 0;
+    this.sun.shadow.autoUpdate = p.sun;
+    this.sun.shadow.needsUpdate = p.sun;
     for (const f of this.fixtures) f.light.intensity = f.cd * p.dim[f.kind];
     for (const { light, intensity } of this.areaLights) light.intensity = intensity * p.dim.strip;
     this.mat.glow.emissiveIntensity = p.glow;

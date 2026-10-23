@@ -153,6 +153,7 @@ function swingDoor(b: Build, d: Extract<Door, { kind: 'swing' }>, obstacles: Obs
   const [hx, hy] = planPt(f, ah, fs);
   const pivot = new THREE.Group();
   pivot.position.set(X(hx), 0, Z(hy));
+  pivot.userData.dynamic = true;
   b.root.add(pivot);
   const along = worldVec(f, 1, 0), across = worldVec(f, 0, 1);
   const leafBot = UNDERCUT + thr, leafTop = top - Jm - G / 100;
@@ -270,6 +271,7 @@ function slideDoor(b: Build, d: Extract<Door, { kind: 'slide' }>, doors: Doors):
 
   // 門片與五金放在一個群組裡，沿牆平移
   const g = new THREE.Group();
+  g.userData.dynamic = true;
   b.root.add(g);
   const add = (r: Rect, h0: number, h1: number, m: THREE.Material, rounded = false) => {
     const [x1, y1, x2, y2] = r;
@@ -330,6 +332,7 @@ function slideGlass(b: Build, d: Extract<Door, { kind: 'slideGlass' }>, doors: D
 
   // 活動片以全開位置建模，關閉時往 trackEnd 平移；室內側直立把手在東側框
   const g = new THREE.Group();
+  g.userData.dynamic = true;
   b.root.add(g);
   const add = (r: Rect, h0: number, h1: number, m: THREE.Material) => {
     const [x1, y1, x2, y2] = r;

@@ -194,9 +194,10 @@ export function createMaterials(tex: TextureLibrary) {
     seat: new THREE.MeshPhysicalMaterial({ color: 0xe6e6e2, roughness: 0.2, ior: 1.5 }),
     // 鏡子：銀鏡反射率約 86%（AGC Mirox，EN 1036），玻璃含鐵帶極淡綠；鏡面本身另有即時平面反射
     mirror: M({ color: 0xf0f3f1, roughness: 0.02, metalness: 1 }),
-    // 清玻璃（浮法 ior 1.52）：穿透材質，反射不會被透明度一起淡掉；薄片（thickness 0）不折射
-    glass: new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 1, roughness: 0, ior: 1.52, thickness: 0, metalness: 0,
-      normalMap: glassN }),
+    // 清玻璃（浮法 ior 1.52）：不用穿透（three.js 的穿透要把整個場景再畫一次，畫面時間約 ×3.7），
+    // 改成只畫反射的黑色本體、以加法混合疊在後面的東西上：看得穿，反射也不會被透明度淡掉；薄片不折射
+    glass: new THREE.MeshPhysicalMaterial({ color: 0x000000, roughness: 0, ior: 1.52, metalness: 0, normalMap: glassN,
+      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }),
     // 電視（關機）：OLED 光面，抗反射膜約 1% 反射
     tv: new THREE.MeshPhysicalMaterial({ color: 0x0e0e0e, roughness: 0.05, ior: 1.22 }),
     // 電視機身與窄邊框（霧黑）
