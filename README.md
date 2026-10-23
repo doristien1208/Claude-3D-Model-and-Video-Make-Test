@@ -33,6 +33,8 @@ npm run dev
 
 ## 素材授權
 
+布料貼圖 `boucle_*`、`roughLinen_*`：Poly Haven（CC0）[Wool Boucle](https://polyhaven.com/a/wool_boucle)、[Rough Linen](https://polyhaven.com/a/rough_linen)（colormass 拍攝、Rico Cilliers 處理）的 1k JPG。原圖帶格紋與淺藍色，已用 `tools/process_polyhaven.py` 轉成中性灰（顏色由材質染色決定）；要重做時把 6 個原始檔（`*_diff_1k.jpg`、`*_nor_gl_1k.jpg`、`*_arm_1k.jpg`）放在同一個資料夾，執行 `python tools/process_polyhaven.py <資料夾> public/textures`。
+
 窗外照片：曾成訓（2013-12-25，台中西區），CC BY 2.0，via Wikimedia Commons。影片使用時需在片尾或說明欄註明「Photo: 曾成訓, CC BY 2.0, via Wikimedia Commons」。
 
 - [Taichung old city center Skyline 2013](https://commons.wikimedia.org/wiki/File:Taichung_old_city_center_Skyline_2013.jpg)

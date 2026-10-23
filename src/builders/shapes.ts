@@ -116,7 +116,7 @@ function weldNormals(g: THREE.BufferGeometry, pairs: readonly [number, number][]
 /**
  * 軟墊（沙發坐墊、椅背墊）：平面為圓角矩形（寬 w 沿 x、深 d 沿 z、平面圓角 r），
  * 四周斷面是半徑 e 的圓弧，頂面中間鼓起 crown、底面鼓 crownBottom；邊緣下緣 y = 0、上緣 y = t。
- * 由底面中心一圈圈往外、沿圓弧往上、再往頂面中心收。uv 以公尺計：頂底面 (x, z)，側面（周長, 高），兩者在縫邊分開。
+ * 由底面中心一圈圈往外、沿圓弧往上、再往頂面中心收。uv 以公尺計：頂底面 (x, z)，側面（周長, 斷面弧長），兩者在縫邊分開。
  */
 export function cushion(w: number, d: number, t: number, o: { r?: number; e?: number; crown?: number; crownBottom?: number } = {}): THREE.BufferGeometry {
   const e = Math.min(o.e ?? 0.04, t / 2), r = o.r ?? 0.03, crown = o.crown ?? 0, cb = o.crownBottom ?? 0;
@@ -143,12 +143,15 @@ export function cushion(w: number, d: number, t: number, o: { r?: number; e?: nu
   };
   const outer = ringAt(0), per = [0];
   for (let j = 1; j < outer.length; j++) per.push(per[j - 1] + outer[j].distanceTo(outer[j - 1]));
+  // 側面的 v 取斷面弧長（不是高度），圓弧轉到水平時貼圖才不會被拉長成一絲一絲
   const rings: THREE.Vector3[][] = [], uvs: THREE.Vector2[][] = [];
-  for (const [k, y, side] of prof) {
+  let arc = 0;
+  prof.forEach(([k, y, side], i) => {
+    if (i > 0 && side && prof[i - 1][2]) arc += Math.hypot(k - prof[i - 1][0], y - prof[i - 1][1]);
     const ring = ringAt(k);
     rings.push(ring.map((p) => new THREE.Vector3(p.x, y, p.y)));
-    uvs.push(ring.map((p, j) => (side ? new THREE.Vector2(per[j], y) : new THREE.Vector2(p.x, -p.y))));
-  }
+    uvs.push(ring.map((p, j) => (side ? new THREE.Vector2(per[j], arc) : new THREE.Vector2(p.x, -p.y))));
+  });
   const g = skin(rings, { closed: false, capStart: true, capEnd: true, uvs });
   // 接縫：每圈頭尾重複點、底面／側面與側面／頂面交界的重複圈
   const N = outer.length, pairs: [number, number][] = [];

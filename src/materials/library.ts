@@ -15,10 +15,8 @@ export const TINTS = {
   linen: [1.607, 1.632, 1.615],
   duvet: [1.228, 1.193, 1.115],
   throw: [1.068, 0.927, 0.919],
-  fabric: [0.472, 0.401, 0.347],
   headboard: [0.21, 0.151, 0.121],
   leather: [0.784, 0.855, 0.943],
-  ochre: [0.976, 0.562, 0.228],
   rug: [0.693, 0.685, 0.734],
   rug2: [2.287, 2.452, 2.519],
   chair: [0.085, 0.082, 0.083],
@@ -175,16 +173,16 @@ export function createMaterials(tex: TextureLibrary) {
     linen: PBR('fabric', TINTS.linen),
     duvet: PBR('fabric', TINTS.duvet),
     throw: PBR('rug', TINTS.throw),
-    fabric: PBR('fabric', TINTS.fabric),
-    // 沙發：燕麥灰褐羊毛混紡（座框、坐墊、椅背墊同一塊布）；抱枕：奶油色、赭黃、陶土紅
-    sofa: cloth('fabric', TINTS.fabric, 0x6f655b),
-    pillowCream: cloth('fabric', [1.5, 1.45, 1.3], 0xb9b2a4),
+    // 沙發：燕麥灰褐羊毛 bouclé（座框、坐墊、椅背墊同一塊布）；抱枕：奶油色 bouclé、赭黃與陶土紅粗麻
+    // （Poly Haven 貼圖已轉成線性平均 0.45 的中性灰，倍率換算自原本 fabric 貼圖上的顏色）
+    sofa: cloth('boucle', [0.508, 0.391, 0.297], 0x6f655b),
+    pillowCream: cloth('boucle', [1.615, 1.414, 1.113], 0xb9b2a4),
     headboard: PBR('fabric', TINTS.headboard),
     leather: PBR('leather', TINTS.leather),
     // 植鞣鞍皮（深咖啡）：西班牙椅
     saddle: PBR('leather', [0.64, 0.67, 0.66]),
-    ochre: cloth('fabric', TINTS.ochre, 0x9c6a3c),
-    pillowRust: cloth('fabric', [0.78, 0.26, 0.16], 0x8a5040),
+    ochre: cloth('roughLinen', [1.05, 0.548, 0.195], 0x9c6a3c),
+    pillowRust: cloth('roughLinen', [0.839, 0.254, 0.137], 0x8a5040),
     // 刷毛羊毛毯（HAY Mono，深咖啡灰）
     wool: cloth('fabric', [0.26, 0.21, 0.18], 0x6a5d55),
     rug: PBR('rug', TINTS.rug),

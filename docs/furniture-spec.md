@@ -53,8 +53,8 @@
 
 | 材質 | 用在哪 | 來源選項 |
 |---|---|---|
-| 燕麥／灰褐色羊毛混紡平織（竹節紋） | 沙發、床頭板 | 你提供，或 Poly Haven [wool_boucle](https://polyhaven.com/a/wool_boucle)（CC0） |
-| 亞麻（粗紋）、奶油色 bouclé | 抱枕、被套、燈罩 | Poly Haven [rough_linen](https://polyhaven.com/a/rough_linen)、wool_boucle（CC0） |
+| 燕麥／灰褐色羊毛混紡平織（竹節紋） | 沙發、床頭板 | Poly Haven [wool_boucle](https://polyhaven.com/a/wool_boucle)（CC0）**已套用在沙發**；原圖是格紋，只取毛圈（AO 去橫直條）轉成中性灰 |
+| 亞麻（粗紋）、奶油色 bouclé | 抱枕、被套、燈罩 | Poly Haven [rough_linen](https://polyhaven.com/a/rough_linen)、wool_boucle（CC0）**已套用在抱枕**（奶油色 bouclé、赭黃與陶土紅粗麻）；粗麻原圖淺藍，已去色 |
 | 白色 percale 棉、水洗亞麻皺摺 | 床單、被套 | 你提供 |
 | 刷毛羊毛 | 毯子 | 你提供 |
 | 深咖啡 aniline 皮革、黑色細紋皮革 | 單椅、書房椅 | 你提供（現有皮革貼圖 512 px） |
