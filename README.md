@@ -16,6 +16,7 @@ npm run dev
 
 - `http://localhost:5173/`：模型本體（俯瞰／漫遊、日夜、剖切、房間跳轉、小地圖；左側參數面板可開關各扇門）
 - `http://localhost:5173/?nomerge`：不合併靜態物件（除錯、逐件檢查時用；平常會把同區同材質的靜態物件合併，繪製呼叫從兩千多次降到約三百次）
+- `http://localhost:5173/?unrolled`：燈光迴圈改回 three.js 原本的展開寫法（比較用；每個著色器編譯約慢 5 倍）
 - `http://localhost:5173/compare.html`：參考版與新版並排對照（鏡頭同步，也可切換 A/B 疊圖）
 - `http://localhost:5173/tools/verify/harness.html`：自動比對幾何與像素。執行前先跑 `npm run verify:prep`，產生加了匯出功能的參考版副本
 

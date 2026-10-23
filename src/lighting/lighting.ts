@@ -58,7 +58,9 @@ export class Lighting {
   private readonly mat: Mat;
   private readonly areaLights: readonly { light: THREE.RectAreaLight; intensity: number }[];
 
-  constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer, mat: Mat, areaLights: readonly { light: THREE.RectAreaLight; intensity: number }[] = []) {
+  /** groupOf：燈所在的光區（render/lightMask.ts），聚光燈與點光源依光區排好再加進場景，著色器才能只跑自己光區那一段 */
+  constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer, mat: Mat, areaLights: readonly { light: THREE.RectAreaLight; intensity: number }[] = [],
+    groupOf: (p: THREE.Vector3) => number = () => -1) {
     RectAreaLightUniformsLib.init();
     this.areaLights = areaLights;
     this.scene = scene;
@@ -85,13 +87,11 @@ export class Lighting {
       const l = new THREE.SpotLight(WARM, 0, 0, angle, 1, 2);
       l.position.set(x, y, z);
       l.target.position.set(tx, ty, tz);
-      group.add(l, l.target);
       this.fixtures.push({ light: l, cd, kind });
     };
     const point = (x: number, y: number, z: number, lm: number) => {
       const l = new THREE.PointLight(WARM, 0, 0, 2);
       l.position.set(x, y, z);
-      group.add(l);
       this.fixtures.push({ light: l, cd: lm / (4 * Math.PI), kind: 'lamp' });
     };
 
@@ -137,6 +137,12 @@ export class Lighting {
           break;
         }
       }
+    }
+    // 依光區排序（穩定排序）後加進場景：同一光區的燈在 three.js 的燈光陣列裡是連續的一段
+    const sorted = this.fixtures.map((f) => ({ f, g: groupOf(f.light.position) })).sort((a, b) => a.g - b.g);
+    for (const { f } of sorted) {
+      group.add(f.light);
+      if ((f.light as THREE.SpotLight).isSpotLight) group.add((f.light as THREE.SpotLight).target);
     }
   }
 

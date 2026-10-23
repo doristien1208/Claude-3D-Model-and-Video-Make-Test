@@ -7,12 +7,91 @@ import { CEILING_H, probeZones, site } from '../data/layout';
  * 依探針區把室內分成幾個光區（相通的客餐廳、走廊、玄關算同一區），每盞點光源、聚光燈、面光源只照它所在光區外框內的表面。
  * 外框往室內牆的另一側多留 3 cm 包住自己的牆面；靠外牆的一側延伸到牆外，讓窗框、窗台也照得到。
  * 判斷寫在 three.js 的燈光迴圈裡（依片段世界座標），燈的順序與 three.js 收集燈光的順序相同（場景前序走訪、只算看得到的燈）。
+ *
+ * three.js 會把燈光迴圈展開（每盞燈複製一次迴圈內容）：五十盞燈讓每個著色器約 127 KB，Windows 上 ANGLE 轉 D3D 編譯很慢又吃記憶體。
+ * 夜間燈都不投影、不用燈光貼圖，所以點光源、聚光燈、面光源三段改寫成真正的迴圈（不展開），著色器大小不再隨燈數增加。
+ * 聚光燈與點光源在場景裡已依光區排好（lighting.ts），每個光區在燈光陣列裡是連續一段（lmSpotStart／End）：
+ * 片段只跑自己所在光區那幾段，不必掃過全部五十盞燈。面光源要查 LTC 貼圖，D3D 不允許在長度不定的迴圈裡取樣，
+ * 維持固定長度的迴圈、被遮掉的直接跳過。網址加 ?unrolled 可改回 three.js 原本的展開寫法（比較用）。
  */
 const GROUPS: readonly (readonly string[])[] = [
   ['great', 'hall-guest', 'entry'], ['balcony'], ['mbath'], ['mbed'], ['study'], ['guest'], ['bath'], ['storage'],
 ];
 const MARGIN = 3;   // px
 const OUTSIDE = 30; // px：外牆側延伸到牆外
+
+const UNROLLED = typeof location !== 'undefined' && new URLSearchParams(location.search).has('unrolled');
+const RE_ARGS = 'geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight';
+/** 不展開、跳過被遮掉的燈的迴圈（三種燈各一段）：start 為 three.js 該段的開頭，body 為換上的內容 */
+const LOOPS: readonly { start: string; body: string }[] = [
+  {
+    start: '#if ( NUM_POINT_LIGHTS > 0 ) && defined( RE_Direct )',
+    body: `#if ( NUM_POINT_LIGHTS > 0 ) && defined( RE_Direct )
+	PointLight pointLight;
+	for ( int g = 0; g <= LM_GROUPS; g ++ ) {
+		if ( g > 0 && ( ( lmFrag >> ( g - 1 ) ) & 1 ) == 0 ) continue;
+		for ( int i = lmPointStart[ g ]; i < lmPointEnd[ g ]; i ++ ) {
+		pointLight = pointLights[ i ];
+		getPointLightInfo( pointLight, geometryPosition, directLight );
+		RE_Direct( directLight, ${RE_ARGS} );
+		}
+	}
+#endif`,
+  },
+  {
+    start: '#if ( NUM_SPOT_LIGHTS > 0 ) && defined( RE_Direct )',
+    body: `#if ( NUM_SPOT_LIGHTS > 0 ) && defined( RE_Direct )
+	SpotLight spotLight;
+	for ( int g = 0; g <= LM_GROUPS; g ++ ) {
+		if ( g > 0 && ( ( lmFrag >> ( g - 1 ) ) & 1 ) == 0 ) continue;
+		for ( int i = lmSpotStart[ g ]; i < lmSpotEnd[ g ]; i ++ ) {
+		spotLight = spotLights[ i ];
+		getSpotLightInfo( spotLight, geometryPosition, directLight );
+		RE_Direct( directLight, ${RE_ARGS} );
+		}
+	}
+#endif`,
+  },
+  {
+    start: '#if ( NUM_RECT_AREA_LIGHTS > 0 ) && defined( RE_Direct_RectArea )',
+    body: `#if ( NUM_RECT_AREA_LIGHTS > 0 ) && defined( RE_Direct_RectArea )
+	RectAreaLight rectAreaLight;
+	for ( int i = 0; i < NUM_RECT_AREA_LIGHTS; i ++ ) {
+		if ( lmOn( lmRect[ i ] ) < 0.5 ) continue;
+		rectAreaLight = rectAreaLights[ i ];
+		RE_Direct_RectArea( rectAreaLight, ${RE_ARGS} );
+	}
+#endif`,
+  },
+];
+
+/** 各光區在燈光陣列裡的 [start, end)（第 0 格為不屬於任何光區的 −1）；燈沒依光區排好就警告 */
+function ranges(groups: readonly number[], kind: string): [number[], number[]] {
+  const start = Array(GROUPS.length + 1).fill(0), end = Array(GROUPS.length + 1).fill(0);
+  for (let g = -1; g < GROUPS.length; g++) {
+    const first = groups.indexOf(g), last = groups.lastIndexOf(g);
+    if (first < 0) continue;
+    if (groups.slice(first, last + 1).some((x) => x !== g)) console.warn(`lightMask：${kind} 燈沒有依光區排好（光區 ${g}），會照到別的空間`);
+    start[g + 1] = first;
+    end[g + 1] = last + 1;
+  }
+  return [start, end];
+}
+
+/** 把 lights_fragment_begin 裡三段展開的迴圈換成 LOOPS；找不到標記就傳回 null（改用逐行插入的展開寫法） */
+function rolledLights(chunk: string): string | null {
+  let out = chunk;
+  for (const { start, body } of LOOPS) {
+    const i = out.indexOf(start), end = i < 0 ? -1 : out.indexOf('#pragma unroll_loop_end', i), j = end < 0 ? -1 : out.indexOf('#endif', end);
+    if (j < 0) return null;
+    out = out.slice(0, i) + body + out.slice(j + '#endif'.length);
+  }
+  // 這三種燈若有陰影或燈光貼圖，上面的迴圈就不對了
+  return `#if NUM_POINT_LIGHT_SHADOWS > 0 || NUM_SPOT_LIGHT_SHADOWS > 0 || NUM_SPOT_LIGHT_MAPS > 0
+#error lightMask: night lights must not cast shadows or use light maps
+#endif
+${out}`;
+}
 
 const POINT_LINE = 'getPointLightInfo( pointLight, geometryPosition, directLight );';
 const SPOT_LINE = 'getSpotLightInfo( spotLight, geometryPosition, directLight );';
@@ -26,6 +105,11 @@ export class LightMask {
     lmBoxGroup: { value: [] as number[] },
     lmPoint: { value: [] as number[] },
     lmSpot: { value: [] as number[] },
+    /** 第 g + 1 格為光區 g 在燈光陣列裡的 [start, end)；第 0 格為不屬於任何光區的燈 */
+    lmPointStart: { value: [] as number[] },
+    lmPointEnd: { value: [] as number[] },
+    lmSpotStart: { value: [] as number[] },
+    lmSpotEnd: { value: [] as number[] },
     lmRect: { value: [] as number[] },
   };
 
@@ -66,6 +150,8 @@ export class LightMask {
     });
     this.uniforms.lmPoint.value = point;
     this.uniforms.lmSpot.value = spot;
+    [this.uniforms.lmPointStart.value, this.uniforms.lmPointEnd.value] = ranges(point, 'point');
+    [this.uniforms.lmSpotStart.value, this.uniforms.lmSpotEnd.value] = ranges(spot, 'spot');
     this.uniforms.lmRect.value = rect;
   }
 
@@ -82,8 +168,10 @@ export class LightMask {
 	vLmWorld = ( modelMatrix * lmP ).xyz;`,
     );
     const chunk = THREE.ShaderChunk.lights_fragment_begin;
+    const rolled = UNROLLED ? null : rolledLights(chunk);
+    if (!rolled && !UNROLLED) console.warn('lightMask：three.js 燈光迴圈已變更，改用展開寫法');
     for (const s of [POINT_LINE, SPOT_LINE, RECT_CALL]) if (!chunk.includes(s)) console.warn('lightMask：three.js 著色器已變更，燈光遮罩未完整套用', s);
-    const lights = chunk
+    const lights = rolled ?? chunk
       .replace(POINT_LINE, `${POINT_LINE}\n\t\tdirectLight.color *= lmOn( lmPoint[ i ] );`)
       .replace(SPOT_LINE, `${SPOT_LINE}\n\t\tdirectLight.color *= lmOn( lmSpot[ i ] );`)
       .replace(RECT_CALL, `if ( lmOn( lmRect[ i ] ) > 0.5 ) ${RECT_CALL}`);
@@ -100,6 +188,11 @@ uniform int lmPoint[ NUM_POINT_LIGHTS ];
 #if NUM_SPOT_LIGHTS > 0
 uniform int lmSpot[ NUM_SPOT_LIGHTS ];
 #endif
+#define LM_GROUPS ${GROUPS.length}
+uniform int lmPointStart[ ${GROUPS.length + 1} ];
+uniform int lmPointEnd[ ${GROUPS.length + 1} ];
+uniform int lmSpotStart[ ${GROUPS.length + 1} ];
+uniform int lmSpotEnd[ ${GROUPS.length + 1} ];
 #if NUM_RECT_AREA_LIGHTS > 0
 uniform int lmRect[ NUM_RECT_AREA_LIGHTS ];
 #endif

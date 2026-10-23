@@ -30,9 +30,9 @@ const textures = new TextureLibrary(renderer);
 const materials = createMaterials(textures);
 const house = buildHouse(materials);
 scene.add(house.build.root, house.ground);
-const lights = new Lighting(scene, renderer, materials.mat, house.build.areaLights);
 // 每區環境反射探針；日夜切換時發光強度會整體改變的材質不複製。同一批材質再加上燈光遮罩（燈只照亮所在空間）
 const lightMask = new LightMask();
+const lights = new Lighting(scene, renderer, materials.mat, house.build.areaLights, (p) => lightMask.groupAt(p));
 const probes = new EnvProbes(renderer, scene, house.build.root, new Set([materials.mat.glow, materials.mat.glowSoft]), (s) => lightMask.patch(s));
 // 探針已依區域分好材質，接著合併靜態物件（會動的門、窗簾、鏡面、霧面玻璃不合併；天花板群組各自合併）；?nomerge 可關閉
 if (!new URLSearchParams(location.search).has('nomerge')) {
@@ -191,5 +191,5 @@ requestAnimationFrame(loop);
 Object.assign(window, {
   __dbg: { setMode, walk: walk.state, applyLight, setNight, setCut, camera, orbit, setDoor: (id: string, t: number) => house.doors.set(id, t),
     setCurtain: (id: string, layer: 'sheer' | 'main', t: number) => house.build.curtains.find((c) => c.id === id)?.set(layer, t) },
-  __app: { THREE, scene, renderer, camera, build: house.build, doors: house.doors, probes, view, ready: textures.ready },
+  __app: { THREE, scene, renderer, camera, build: house.build, doors: house.doors, probes, view, lights, lightMask, ready: textures.ready },
 });
