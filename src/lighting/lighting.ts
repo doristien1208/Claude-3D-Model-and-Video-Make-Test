@@ -146,10 +146,11 @@ export class Lighting {
     this.hemi.color.set(p.hemi.sky);
     this.hemi.groundColor.set(p.hemi.ground);
     // 太陽晚上不移除、只把強度歸零：燈數不變，所有材質不必為日夜各編一套著色器（每套約 127 KB × 數十個）；
-    // 陰影圖晚上停止更新
+    // 陰影圖晚上停止更新，但每次切換都畫一次：一開始就是夜晚時陰影圖若從沒畫過，著色器的陰影取樣器會綁到一般貼圖，
+    // 整批材質都畫不出來（GL_INVALID_OPERATION：texture format 與 sampler type 不符）
     this.sun.intensity = p.sun ? SUN : 0;
     this.sun.shadow.autoUpdate = p.sun;
-    this.sun.shadow.needsUpdate = p.sun;
+    this.sun.shadow.needsUpdate = true;
     for (const f of this.fixtures) f.light.intensity = f.cd * p.dim[f.kind];
     for (const { light, intensity } of this.areaLights) light.intensity = intensity * p.dim.strip;
     this.mat.glow.emissiveIntensity = p.glow;
