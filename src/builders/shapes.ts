@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /*
  * 曲面工具：以一圈圈水平斷面放樣（loft）做出浴缸內膽、面盆、馬桶這類圓角曲面。
@@ -166,8 +166,9 @@ export function cushion(w: number, d: number, t: number, o: { r?: number; e?: nu
 /**
  * 抱枕：w × h 的方形布套塞飽後的形狀，平放在 xz 平面、縫邊在 y = 0，兩面各鼓起 t/2；
  * 四邊中段被填充往內拉（pinch），四角尖出。頂點往縫邊集中，鼓起的邊緣才圓順。uv 為 (x, z) 公尺。
+ * flange > 0 時沿縫邊加一圈平邊（歐式方枕套的荷葉邊，厚 4 mm），外緣也被拉進一半。
  */
-export function pillow(w: number, h: number, t: number, pinch = 0.07, n = 20): THREE.BufferGeometry {
+export function pillow(w: number, h: number, t: number, pinch = 0.07, n = 20, flange = 0): THREE.BufferGeometry {
   const a = w / 2, b = h / 2, pos: number[] = [], uv: number[] = [], idx: number[] = [];
   const s = (i: number) => Math.sin(((2 * i) / n - 1) * (Math.PI / 2));
   for (const side of [1, -1]) {
@@ -190,7 +191,25 @@ export function pillow(w: number, h: number, t: number, pinch = 0.07, n = 20): T
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx);
   g.computeVertexNormals();
-  return g;
+  if (flange <= 0) return g;
+  // 平邊：外框（半個 pinch）挖掉縫線輪廓（內縮 4 mm 與枕身重疊）
+  const ring = (ha: number, hb: number, k: number) => {
+    const pts: THREE.Vector2[] = [], m = 24;
+    const at = (u: number, v: number) => new THREE.Vector2(ha * u * (1 - k * (1 - v * v)), hb * v * (1 - k * (1 - u * u)));
+    for (let i = 0; i < m; i++) pts.push(at(-1 + (2 * i) / m, -1));
+    for (let i = 0; i < m; i++) pts.push(at(1, -1 + (2 * i) / m));
+    for (let i = 0; i < m; i++) pts.push(at(1 - (2 * i) / m, 1));
+    for (let i = 0; i < m; i++) pts.push(at(-1, 1 - (2 * i) / m));
+    return pts;
+  };
+  const shape = new THREE.Shape(ring(a + flange, b + flange, pinch / 2));
+  shape.holes.push(new THREE.Path(ring(a - 0.004, b - 0.004, pinch)));
+  const frame = slab(shape, 0.004).translate(0, -0.002, 0);
+  frame.deleteAttribute('uv');
+  const fp = frame.attributes.position, fuv: number[] = [];
+  for (let i = 0; i < fp.count; i++) fuv.push(fp.getX(i), -fp.getZ(i));
+  frame.setAttribute('uv', new THREE.Float32BufferAttribute(fuv, 2));
+  return mergeGeometries([g.toNonIndexed(), frame])!;
 }
 
 /**
@@ -218,6 +237,72 @@ export function drape(path: readonly [number, number][], w: number, th: number, 
     uvs.push(sec.map(([z]) => new THREE.Vector2(s, z)));
   });
   return skin(rings, { capStart: true, capEnd: true, uvs });
+}
+
+/**
+ * 有厚度的布面（被子、床罩）：us × vs 的格點（公尺，也當 uv），f(u, v) 給外表面的點，t(u, v) 為厚度。
+ * 內表面 = 外表面 − 法線 × t，四周補一圈布邊。f 要讓 u 往 +x、v 往 +z 時外表面朝上（法線 = ∂v × ∂u）。
+ */
+export function thickGrid(us: readonly number[], vs: readonly number[], f: (u: number, v: number) => THREE.Vector3,
+  t: (u: number, v: number) => number): THREE.BufferGeometry {
+  const nu = us.length, nv = vs.length, I = (i: number, j: number) => i * nv + j;
+  const P = us.flatMap((u) => vs.map((v) => f(u, v)));
+  // 外表面法線：先用暫時的格網算
+  const tri: number[] = [];
+  for (let i = 0; i + 1 < nu; i++) for (let j = 0; j + 1 < nv; j++)
+    tri.push(I(i, j), I(i, j + 1), I(i + 1, j), I(i + 1, j), I(i, j + 1), I(i + 1, j + 1));
+  const tmp = new THREE.BufferGeometry().setFromPoints(P);
+  tmp.setIndex(tri);
+  tmp.computeVertexNormals();
+  const N = tmp.attributes.normal as THREE.BufferAttribute, n = new THREE.Vector3();
+  const Q = P.map((p, k) => p.clone().addScaledVector(n.fromBufferAttribute(N, k), -t(us[Math.floor(k / nv)], vs[k % nv])));
+
+  const pos: number[] = [], uv: number[] = [], idx: number[] = [];
+  const put = (p: THREE.Vector3, u: number, v: number) => { pos.push(p.x, p.y, p.z); uv.push(u, v); return pos.length / 3 - 1; };
+  const outer = P.map((p, k) => put(p, us[Math.floor(k / nv)], vs[k % nv]));
+  const inner = Q.map((p, k) => put(p, us[Math.floor(k / nv)], vs[k % nv]));
+  for (let i = 0; i + 1 < nu; i++) for (let j = 0; j + 1 < nv; j++) {
+    const a = I(i, j), b = I(i, j + 1), c = I(i + 1, j), d = I(i + 1, j + 1);
+    idx.push(outer[a], outer[b], outer[c], outer[c], outer[b], outer[d]);
+    idx.push(inner[a], inner[c], inner[b], inner[c], inner[d], inner[b]);
+  }
+  // 布邊：沿外框一圈（j = 0 列 → i = 末行 → j = 末列 → i = 0 行）
+  // 每段記下朝外的 uv 方向：布邊內側的 uv 往外移一個厚度，貼圖才不會被拉成條紋
+  const loop: number[] = [], side: [number, number][] = [];
+  for (let i = 0; i < nu - 1; i++) { loop.push(I(i, 0)); side.push([0, -1]); }
+  for (let j = 0; j < nv - 1; j++) { loop.push(I(nu - 1, j)); side.push([1, 0]); }
+  for (let i = nu - 1; i > 0; i--) { loop.push(I(i, nv - 1)); side.push([0, 1]); }
+  for (let j = nv - 1; j > 0; j--) { loop.push(I(0, j)); side.push([-1, 0]); }
+  // 第一段的朝外方向是 −v，用它決定布邊的繞向
+  const out0 = P[I(0, 0)].clone().sub(P[I(0, 1)]);
+  const e0 = P[loop[1]].clone().sub(P[loop[0]]), e1 = Q[loop[0]].clone().sub(P[loop[0]]);
+  const flip = e0.cross(e1).dot(out0) < 0;
+  for (let k = 0; k < loop.length; k++) {
+    const a = loop[k], b = loop[(k + 1) % loop.length];
+    const ua = us[Math.floor(a / nv)], va = vs[a % nv], ub = us[Math.floor(b / nv)], vb = vs[b % nv];
+    const [sx, sy] = side[k], ta = Q[a].distanceTo(P[a]), tb = Q[b].distanceTo(P[b]);
+    const pa = put(P[a], ua, va), pb = put(P[b], ub, vb), qa = put(Q[a], ua + sx * ta, va + sy * ta), qb = put(Q[b], ub + sx * tb, vb + sy * tb);
+    if (flip) idx.push(pa, qa, pb, pb, qa, qb);
+    else idx.push(pa, pb, qa, pb, qb, qa);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+/** 由 a 到 b 的取樣點，兩端（或指定的位置）加密：基本間距 step，在 dense 附近 ±w 範圍內改用 fine */
+export function samples(a: number, b: number, step: number, dense: readonly number[] = [], w = 0.12, fine = 0.015): number[] {
+  const out = [a];
+  let x = a;
+  while (x < b - 1e-6) {
+    const near = dense.some((d) => Math.abs(x - d) < w);
+    x = Math.min(b, x + (near ? fine : step));
+    out.push(x);
+  }
+  return out;
 }
 
 /** 多邊形每個角倒圓（半徑 r，凹角也可），回傳 Shape；點為 (x, z) */

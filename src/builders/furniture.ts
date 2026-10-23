@@ -1,28 +1,8 @@
 import * as THREE from 'three';
 import { X, Z } from '../core/units';
 import type { ItemOf } from '../data/query';
-import { add, gbox, worldUV, type Build } from './prims';
+import { add, gbox, leanOn, orient, rbox, worldUV, type Build } from './prims';
 import { cushion, drape, pillow, roundedPolygon, slab } from './shapes';
-
-/** 雙人床，床頭在北側 (y1) */
-export function bed(b: Build, it: ItemOf<'bed'>): void {
-  const { mat } = b;
-  const [x1, y1, x2, y2] = it.rect;
-  b.bx(x1 - 8, y1, x2 + 8, y1 + 8, 0, 1.1, mat.headboard);
-  b.bx(x1 + 12, y1 + 20, x2 - 12, y2 - 12, 0, 0.1, mat.black, { cast: false });
-  b.bx(x1, y1 + 8, x2, y2, 0.1, 0.3, mat.walnut, { solid: true });
-  b.bx(x1 + 3, y1 + 10, x2 - 3, y2 - 3, 0.3, 0.5, mat.linen);
-  b.bx(x1 - 1, y1 + 60, x2 + 1, y2 + 1, 0.36, 0.56, mat.duvet);
-  b.bx(x1 - 1.5, y2 - 48, x2 + 1.5, y2 + 1.5, 0.4, 0.575, mat.throw);
-  const w = (x2 - x1 - 24) / 2;
-  b.bx(x1 + 8, y1 + 14, x1 + 8 + w, y1 + 46, 0.5, 0.64, mat.linen);
-  b.bx(x2 - 8 - w, y1 + 14, x2 - 8, y1 + 46, 0.5, 0.64, mat.linen);
-}
-
-/** 懸浮床頭櫃 */
-export function nightstand(b: Build, it: ItemOf<'nightstand'>): void {
-  b.box(it.rect, 0.12, 0.5, b.mat.walnut, { solid: true });
-}
 
 /** 地毯；h 為厚度（客廳 Muuto Ply 平織 0.6 cm），inner 為淺色內層（只高出 1 mm，像織出來的色塊） */
 export function rug(b: Build, it: ItemOf<'rug'>): void {
@@ -49,13 +29,6 @@ export function officeChair(b: Build, it: ItemOf<'officeChair'>): void {
   b.bx(x - 24, y - 26, x + 24, y - 18, 0.52, 1.02, mat.chair);
 }
 
-/** 圓角方塊（群組本地座標，公尺），補上公尺 uv */
-function rbox(g: THREE.Object3D, x0: number, z0: number, x1: number, z1: number, y0: number, y1: number, m: THREE.Material, r: number): THREE.Mesh {
-  const me = gbox(g, x1 - x0, y1 - y0, z1 - z0, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, m, r);
-  worldUV(me.geometry, me.position);
-  return me;
-}
-
 /**
  * 水平 L 形或任意多邊形的軟包塊：平面 pts（公尺）、y0–y1，角圓 r、上下緣倒圓 bevel。
  * r 要比 bevel 大：r186 的 ExtrudeGeometry 拿內縮 bevel 後的輪廓做三角化，圓角縮成同一點會讓 earcut 拉出跨過缺角的三角形。
@@ -65,26 +38,6 @@ function padded(g: THREE.Object3D, pts: readonly [number, number][], y0: number,
   const me = add(g, geo, m, 0, y0, 0);
   worldUV(geo, me.position);
   return me;
-}
-
-/** 以三個軸（本地 x、y、z 在父座標的方向）擺放幾何 */
-function orient(geo: THREE.BufferGeometry, ax: THREE.Vector3, ay: THREE.Vector3, az: THREE.Vector3): THREE.BufferGeometry {
-  return geo.applyMatrix4(new THREE.Matrix4().makeBasis(ax, ay, az));
-}
-
-/**
- * 靠著椅背的軟墊／抱枕：幾何平放（x 寬、y 厚、z 高），bottom 為下緣中點、out 為朝座位的水平方向，
- * 往後仰 tilt、在自己平面內轉 roll（弧度）。
- */
-function leanOn(g: THREE.Object3D, geo: THREE.BufferGeometry, m: THREE.Material, bottom: THREE.Vector3, out: THREE.Vector3, h: number, tilt: number, roll = 0): THREE.Mesh {
-  const up = new THREE.Vector3(0, 1, 0);
-  const ny = out.clone().multiplyScalar(-Math.sin(tilt)).addScaledVector(up, Math.cos(tilt)).normalize();  // 高度方向（往椅背仰）
-  const nz = out.clone().multiplyScalar(Math.cos(tilt)).addScaledVector(up, -Math.sin(tilt)).normalize();  // 厚度方向（朝座位）
-  const nx = new THREE.Vector3().crossVectors(nz, ny);
-  // 平放的 (x 寬, y 厚, z 高) → (nx, nz, ny)；先在平面內轉 roll
-  const q = new THREE.Matrix4().makeRotationY(roll);
-  orient(geo.applyMatrix4(q), nx, nz, ny);
-  return add(g, geo, m, bottom.x + ny.x * (h / 2), bottom.y + ny.y * (h / 2), bottom.z + ny.z * (h / 2));
 }
 
 /**

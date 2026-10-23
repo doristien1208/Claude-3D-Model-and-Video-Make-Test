@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { X, Z } from '../core/units';
-import { CEILING_H, DOWNLIGHT, DOWNLIGHT_RECESS, items, lighting, probeZones, type DownlightKind, type Rect } from '../data/layout';
+import { CEILING_H, DOWNLIGHT, DOWNLIGHT_RECESS, items, lighting, type DownlightKind } from '../data/layout';
 import type { Mat } from '../materials/library';
 
 /** 2700K 暖光（相機白平衡偏暖時的顏色） */
@@ -115,9 +115,9 @@ export class Lighting {
           point(X(it.shade[0]), 1.34, Z(it.shade[1]), L.floorLamp);
           break;
         case 'wallLamp': {
-          // 床頭壁燈：面板前 8 cm，朝房間中央那一側
-          const c = rectCenter(it.rect), out = towardRoom(it.rect);
-          point(X(c[0] + out[0] * 8), (it.h[0] + it.h[1]) / 2, Z(c[1] + out[1] * 8), L.wallLamp);
+          // Tolomeo 燈頭往下照枕頭（圓錐燈罩約 100°）
+          const a = 50 * DEG, x = X(it.head[0]), z = Z(it.head[1]);
+          spot(x, it.headH - 0.07, z, x, 0, z, a, L.wallLamp / (Math.PI * (1 - Math.cos(a))), 'lamp');
           break;
         }
         case 'deskLamp': {
@@ -148,14 +148,4 @@ export class Lighting {
     this.mat.outside.color.set(p.outside);
     this.renderer.toneMappingExposure = p.exposure;
   }
-}
-
-const rectCenter = (r: Rect): [number, number] => [(r[0] + r[2]) / 2, (r[1] + r[3]) / 2];
-
-/** 貼牆小物件朝房間中央的方向（沿它的薄邊）：回傳單位向量（px） */
-function towardRoom(r: Rect): [number, number] {
-  const [cx, cy] = rectCenter(r);
-  const zone = probeZones.find((z) => cx >= z.rect[0] && cx <= z.rect[2] && cy >= z.rect[1] && cy <= z.rect[3]);
-  const [zx, zy] = zone ? rectCenter(zone.rect) : [cx, cy];
-  return r[2] - r[0] < r[3] - r[1] ? [Math.sign(zx - cx) || 1, 0] : [0, Math.sign(zy - cy) || 1];
 }

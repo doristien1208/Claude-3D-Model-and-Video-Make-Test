@@ -7,11 +7,6 @@ import { FACING_YAW, add, gbox, lathe, worldUV, type Build } from './prims';
 
 /* ---------- 燈具 ---------- */
 
-/** 床頭壁燈（發光面板） */
-export function wallLamp(b: Build, it: ItemOf<'wallLamp'>): void {
-  b.glowBox(it.rect[0], it.rect[1], it.rect[2], it.rect[3], it.h[0], it.h[1], b.mat.glowSoft);
-}
-
 export function deskLamp(b: Build, it: ItemOf<'deskLamp'>): void {
   const { mat } = b;
   const [x, y] = it.at;

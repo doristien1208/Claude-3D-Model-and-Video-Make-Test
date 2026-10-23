@@ -80,6 +80,33 @@ export const xcyl = (r: number, len: number, seg = 24) => new THREE.CylinderGeom
 export const lathe = (profile: readonly [number, number][], seg = 32) =>
   new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), seg);
 
+/** 圓角方塊（群組本地座標，公尺），補上公尺 uv */
+export function rbox(g: THREE.Object3D, x0: number, z0: number, x1: number, z1: number, y0: number, y1: number, m: THREE.Material, r: number): THREE.Mesh {
+  const me = gbox(g, x1 - x0, y1 - y0, z1 - z0, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, m, r);
+  worldUV(me.geometry, me.position);
+  return me;
+}
+
+/** 以三個軸（本地 x、y、z 在父座標的方向）擺放幾何 */
+export function orient(geo: THREE.BufferGeometry, ax: THREE.Vector3, ay: THREE.Vector3, az: THREE.Vector3): THREE.BufferGeometry {
+  return geo.applyMatrix4(new THREE.Matrix4().makeBasis(ax, ay, az));
+}
+
+/**
+ * 靠著椅背的軟墊／抱枕：幾何平放（x 寬、y 厚、z 高），bottom 為下緣中點、out 為朝座位的水平方向，
+ * 往後仰 tilt、在自己平面內轉 roll（弧度）。
+ */
+export function leanOn(g: THREE.Object3D, geo: THREE.BufferGeometry, m: THREE.Material, bottom: THREE.Vector3, out: THREE.Vector3, h: number, tilt: number, roll = 0): THREE.Mesh {
+  const up = new THREE.Vector3(0, 1, 0);
+  const ny = out.clone().multiplyScalar(-Math.sin(tilt)).addScaledVector(up, Math.cos(tilt)).normalize();  // 高度方向（往椅背仰）
+  const nz = out.clone().multiplyScalar(Math.cos(tilt)).addScaledVector(up, -Math.sin(tilt)).normalize();  // 厚度方向（朝座位）
+  const nx = new THREE.Vector3().crossVectors(nz, ny);
+  // 平放的 (x 寬, y 厚, z 高) → (nx, nz, ny)；先在平面內轉 roll
+  const q = new THREE.Matrix4().makeRotationY(roll);
+  orient(geo.applyMatrix4(q), nx, nz, ny);
+  return add(g, geo, m, bottom.x + ny.x * (h / 2), bottom.y + ny.y * (h / 2), bottom.z + ny.z * (h / 2));
+}
+
 /** 建構期間共用的狀態與幾何工具（輸入為 SVG px，高度為公尺） */
 export class Build {
   readonly root = new THREE.Group();

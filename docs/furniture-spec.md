@@ -19,12 +19,12 @@
 
 | 物件 | 參考產品 | 現在 | 建議 | 造型重點 |
 |---|---|---|---|---|
-| 主臥床 | 歐規 180 × 200 床墊（台灣 6 尺 182 寬放不下）、[IKEA LYNGÖR](https://www.ikea.com.tw/en/products/mattresses-and-accessories/bases-and-legs/lyngor-spr-19553091)、[Smilow 懸浮床架](https://www.smilowdesign.com/furniture/p/floating-platform-bed-mel-smilow) | 方塊疊成 | 床座 180 × 200 × 22，下方深色內縮踢腳 8 高；床墊 28；床面高約 58 | 床座與床墊邊緣圓角；床頭板保留（1.1 m 高、圓角、布面） |
+| 主臥床 | 歐規 180 × 200 床墊（台灣 6 尺 182 寬放不下）、[IKEA LYNGÖR](https://www.ikea.com.tw/en/products/mattresses-and-accessories/bases-and-legs/lyngor-spr-19553091)、[Smilow 懸浮床架](https://www.smilowdesign.com/furniture/p/floating-platform-bed-mel-smilow) | 方塊疊成 | 床座 180 × 200 × 22，下方深色內縮踢腳 8 高（內縮 10）；床墊 28；床面高約 58 | 床座與床墊邊緣圓角；床頭板保留（1.1 m 高、圓角、布面），**深度 8 → 5 cm，床尾 509 → 513，床尾走道 51 → 47 cm** |
 | 客房床 | 歐規 160 × 200 | 方塊疊成 | 同主臥做法，床墊 25 | 床頭板 176 × 110 布面板 |
-| 寢具 | 飯店／樣品屋鋪法 | 方塊 | 被子 240 × 260（客房 220 × 240），中間厚 6–8、邊緣 3，兩側垂下約 30；床頭端往回折約 1/4；歐式方枕 65×65 ×2 立靠、枕頭 50×75 ×2、腰枕 30×50；床尾巾 55 × 240 | 被子垂墜與皺摺、枕頭鼓起與四角 |
-| 懸浮床頭櫃 | [Article Lenia](https://www.dimensions.com/element/lenia-nightstand-floating)、[EQ3 Marcel](https://eq3.com/us/en/product/cjv5kwuno05rv0190nhqar1zd/bedroom/storage/nightstands/marcel-single-drawer-floating-nightstand) | 0.12–0.50 m 實心方塊 | 44 × 37 × 16（客房 42 × 38），**櫃面高 0.60（與床面齊）**，即 0.44–0.60 | 單抽屜、下緣取手溝、隱藏壁掛 |
-| 床頭壁燈 | [Artemide Tolomeo Micro Wall](https://www.artemide.com/en/product/modalProdotto?id=4717133) | 發光方框 12 × 15，1.30–1.45 m | 搖臂伸出約 50、燈頭小圓錐；**壁座中心 1.05 m**（床面上 47 cm） | 霧黑鋁、兩段式搖臂 |
-| 地毯 | 標準尺寸 | 主臥 235 × 186、客房 200 × 160 | 主臥 240 × 170、客房 230 × 160；羊毛圈絨厚 1.0–1.2 | 方角 |
+| 寢具 | 飯店／樣品屋鋪法、[IKEA 枕套尺寸](https://www.ikea.com/ie/en/rooms/bedroom/how-to/how-to-choose-the-right-size-pillow-and-pillowcase-pubb288dcc0/)、[wald 床尾巾](https://wald.de/products/twelve-solid-bed-scarf-bed-runner-bedding-scarves-for-bedroo/220679183/) | 方塊 | 被子 240 × 260（客房 220 × 240），中間鬆 7、邊緣滾邊 2，兩側垂下約 30；床頭端往回折約 1/4；歐式方枕 65×65（5 cm 平邊、鼓 18）×2 立靠、枕頭 50×75（鼓 15）×2、腰枕 30×50；床尾巾 55 寬、0.8 厚 | 被子垂墜與皺摺、角落垂得較低、枕頭鼓起與四角 |
+| 懸浮床頭櫃 | [Article Lenia](https://www.article.com/product/24423/lenia-floating-nightstand-white-oak)、[EQ3 Marcel](https://www.eq3.com/us/en/product/cjv5kwuno05rv0190nhqar1zd) | 0.12–0.50 m 實心方塊 | 44 × 37 × 16（客房 42 × 38），**櫃面與床面齊**：主臥 0.44–0.60、客房 0.40–0.56；貼床頭牆 | 單抽屜面板退在櫃框內 3.5、上緣木唇取手、隱藏壁掛；**床頭插座 0.6 → 0.72 m**（避開櫃子）；主臥窗簾軌道改從 y 347 起（收簾不疊在西側櫃上） |
+| 床頭壁燈 | [Artemide Tolomeo Micro Wall](https://norlux.com/wp-content/uploads/2022/03/artemide_tolomeo_micro_wall_black_body_lamp_1841219_en.pdf)（黑 A010930） | 發光方框 12 × 15，1.30–1.45 m | 最大伸出 73；下臂約 30、上臂約 32；燈頭 Ø10.8；**壁座中心 1.05 m**（床面上 47 cm） | 圓形拋光壁座 Ø9.8＋U 形夾座、黑色鋁管、不鏽鋼拉線、肘後尾端 |
+| 地毯 | 標準尺寸 | 主臥 235 × 186、客房 200 × 160 | 主臥 240 × 170、客房 230 × 160；羊毛圈絨厚 1.2 | 方角；床兩側各露 30／35 |
 
 ## 第 3 批：書房與餐廚
 

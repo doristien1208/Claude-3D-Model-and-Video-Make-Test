@@ -3,6 +3,7 @@ import type { ItemOf } from '../data/query';
 import type { Materials } from '../materials/library';
 import { buildArchitecture, type Architecture } from './architecture';
 import * as bath from './bath';
+import * as bedroom from './bedroom';
 import { curtains } from './curtains';
 import * as decor from './decor';
 import { buildDoors, collectObstacles, type Doors } from './doors';
@@ -20,14 +21,14 @@ type Builder<T extends ItemType> = (b: Build, it: ItemOf<T>) => void;
 /** 每種 layout 物件類型對應一個建構器；之後升級模型或換成 glTF 只要換這裡 */
 const registry: { [T in ItemType]: Builder<T> } = {
   slatWall: millwork.slatWall,
-  headboardPanel: millwork.headboardPanel,
+  headboardPanel: bedroom.headboardPanel,
   shelf: millwork.shelf,
   cabinet: millwork.cabinet,
   kitchenRun: millwork.kitchenRun,
   island: millwork.island,
   wallShelf: millwork.wallShelf,
-  bed: furniture.bed,
-  nightstand: furniture.nightstand,
+  bed: bedroom.bed,
+  nightstand: bedroom.nightstand,
   rug: furniture.rug,
   curtains,
   desk: furniture.desk,
@@ -49,7 +50,7 @@ const registry: { [T in ItemType]: Builder<T> } = {
   paperHolder: bath.paperHolder,
   tray: bath.tray,
   bathAccessory: bath.bathAccessory,
-  wallLamp: fixtures.wallLamp,
+  wallLamp: bedroom.wallLamp,
   deskLamp: fixtures.deskLamp,
   floorLamp: fixtures.floorLamp,
   pendant: fixtures.pendant,

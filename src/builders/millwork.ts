@@ -23,10 +23,6 @@ export function slatWall(b: Build, it: ItemOf<'slatWall'>): void {
   if (it.led) b.glowBox(it.led.rect[0], it.led.rect[1], it.led.rect[2], it.led.rect[3], it.led.h[0], it.led.h[1]);
 }
 
-export function headboardPanel(b: Build, it: ItemOf<'headboardPanel'>): void {
-  b.box(it.rect, it.h[0], it.h[1], b.mat.headboard);
-}
-
 /* ---------- 櫃體正面 ---------- */
 
 /** 櫃體正面的局部座標：along 沿正面，depth 由正面往內（0 = 門片外表面） */

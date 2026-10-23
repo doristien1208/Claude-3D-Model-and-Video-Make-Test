@@ -14,8 +14,6 @@ export const TINTS = {
   stoneWarm: [0.797, 0.803, 0.783],
   linen: [1.607, 1.632, 1.615],
   duvet: [1.228, 1.193, 1.115],
-  throw: [1.068, 0.927, 0.919],
-  headboard: [0.21, 0.151, 0.121],
   leather: [0.784, 0.855, 0.943],
   rug: [0.693, 0.685, 0.734],
   rug2: [2.287, 2.452, 2.519],
@@ -172,12 +170,14 @@ export function createMaterials(tex: TextureLibrary) {
     tileLight: PBR('stoneLightTile'),
     linen: PBR('fabric', TINTS.linen),
     duvet: PBR('fabric', TINTS.duvet),
-    throw: PBR('rug', TINTS.throw),
     // 沙發：燕麥灰褐羊毛 bouclé（座框、坐墊、椅背墊同一塊布）；抱枕：奶油色 bouclé、赭黃與陶土紅粗麻
     // （Poly Haven 貼圖已轉成線性平均 0.45 的中性灰，倍率換算自原本 fabric 貼圖上的顏色）
     sofa: cloth('boucle', [0.508, 0.391, 0.297], 0x6f655b),
     pillowCream: cloth('boucle', [1.615, 1.414, 1.113], 0xb9b2a4),
-    headboard: PBR('fabric', TINTS.headboard),
+    // 床頭板、床座：深咖啡羊毛 bouclé（倍率換算自原本 fabric 貼圖上的顏色）
+    headboard: cloth('boucle', [0.226, 0.147, 0.104], 0x4a3d33),
+    // 歐式方枕：燕麥色粗麻
+    bedOat: cloth('roughLinen', [1.3, 1.09, 0.79], 0xd8cbb5),
     leather: PBR('leather', TINTS.leather),
     // 植鞣鞍皮（深咖啡）：西班牙椅
     saddle: PBR('leather', [0.64, 0.67, 0.66]),

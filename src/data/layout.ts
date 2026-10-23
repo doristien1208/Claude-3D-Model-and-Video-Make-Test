@@ -263,10 +263,13 @@ export type RugMaterial = 'rug' | 'rug2';
 export type Item =
   // 木格柵牆（滿高）；led 為格柵上的間接燈條
   | { id: string; type: 'slatWall'; rect: Rect; led?: { rect: Rect; h: HRange } }
-  | { id: string; type: 'bed'; rect: Rect }
+  // 床：rect 含床頭板（床頭在北 y1）；headboard 為一體的布面床頭板（t 深 px、h 高 m），mattress 為床墊厚（m），duvet 為被子寬 × 長（m）
+  | { id: string; type: 'bed'; rect: Rect; mattress: number; duvet: readonly [number, number]; headboard?: { t: number; h: number } }
   | { id: string; type: 'headboardPanel'; rect: Rect; h: HRange }
-  | { id: string; type: 'nightstand'; rect: Rect }
-  | { id: string; type: 'wallLamp'; rect: Rect; h: HRange }
+  // 懸浮床頭櫃：h 為櫃底到櫃面，front 為抽屜朝向
+  | { id: string; type: 'nightstand'; rect: Rect; h: HRange; front: Side }
+  // 床頭搖臂壁燈：at 為壁座（牆面上的點）、h 為壁座中心高；head 為燈頭位置（平面）、headH 為燈頭高
+  | { id: string; type: 'wallLamp'; at: Pt; facing: Side; h: number; head: Pt; headH: number }
   // 開放書櫃；back 為背板所在側，seed 決定書本排列
   | { id: string; type: 'shelf'; rect: Rect; h: number; shelves: number; back: Side; seed: number }
   // 地毯；h 為厚度（預設 1.2 cm），inner 為淺色內層
@@ -365,18 +368,23 @@ export type ItemType = Item['type'];
 export const items: readonly Item[] = [
   /* 主臥 */
   { id: 'mbed-slat', type: 'slatWall', rect: [76, 304.5, 395, 307.5], led: { rect: [82, 307.5, 390, 309], h: [1.18, 1.2] } },
-  { id: 'mbed-bed', type: 'bed', rect: [129.5, 308, 309.5, 509] },
-  { id: 'mbed-ns-W', type: 'nightstand', rect: [80, 317, 124, 354] },
-  { id: 'mbed-ns-E', type: 'nightstand', rect: [315, 317, 359, 354] },
-  { id: 'mbed-lamp-W', type: 'wallLamp', rect: [96, 307.5, 108, 310], h: [1.3, 1.45] },
-  { id: 'mbed-lamp-E', type: 'wallLamp', rect: [331, 307.5, 343, 310], h: [1.3, 1.45] },
+  // 歐規 180 × 200 床墊＋5 cm 布面床頭板（1.1 m 高）：床尾從 509 移到 513，床尾走道 51 → 47 cm
+  { id: 'mbed-bed', type: 'bed', rect: [129.5, 308, 309.5, 513], mattress: 0.28, duvet: [2.4, 2.6], headboard: { t: 5, h: 1.1 } },
+  // 懸浮床頭櫃 44 × 37 × 16，貼床頭格柵牆，櫃面 0.60 與床面齊
+  { id: 'mbed-ns-W', type: 'nightstand', rect: [80, 307.5, 124, 344.5], h: [0.44, 0.6], front: 'S' },
+  { id: 'mbed-ns-E', type: 'nightstand', rect: [315, 307.5, 359, 344.5], h: [0.44, 0.6], front: 'S' },
+  // Tolomeo Micro 壁燈：壁座中心 1.05（床面上 47 cm），燈頭伸到枕頭外側上方
+  { id: 'mbed-lamp-W', type: 'wallLamp', at: [102, 307.5], facing: 'S', h: 1.05, head: [132, 347], headH: 1.24 },
+  { id: 'mbed-lamp-E', type: 'wallLamp', at: [337, 307.5], facing: 'S', h: 1.05, head: [307, 347], headH: 1.24 },
   // 主臥衣櫃（2026-10 確認）：取代原本的開放書櫃，121 × 60，做到天花；3 扇門＋上方棉被櫃
   { id: 'mbed-wardrobe', type: 'cabinet', rect: [424.5, 366, 484.5, 487], h: [0, 2.8], front: 'W', plinth: 0.08, fronts: [
     { from: 366, to: 487, h: [0.08, 2.4], n: 3, kind: 'door', handle: 'chamfer' },
     { from: 366, to: 487, h: [2.4, 2.8], n: 3, kind: 'door', handle: 'push' },
   ] },
-  { id: 'mbed-rug', type: 'rug', rect: [110, 370, 345, 556], material: 'rug2' },
-  { id: 'mbed-curtains', type: 'curtains', label: '主臥', window: 'win-mbed', sides: 'both' },
+  // 羊毛圈絨 240 × 170：床兩側各露 30，床尾留 45（到南牆面 2 cm）
+  { id: 'mbed-rug', type: 'rug', rect: [99.5, 388, 339.5, 558], material: 'rug2' },
+  // 軌道從西側床頭櫃前緣（344.5）外 2.5 cm 開始，收簾時不會疊在櫃子上；北側收簾約 32 cm，仍在窗（390 起）外
+  { id: 'mbed-curtains', type: 'curtains', label: '主臥', window: 'win-mbed', sides: 'both', span: [347, 558] },
 
   /* 主衛浴：西側濕區（浴缸＋淋浴）｜玻璃隔屏｜東側乾區（馬桶、洗手台）。設備依調查（2026-10 確認） */
   // 嵌入式壓克力浴缸 1700 × 750（缸體參考 Duravit Starck 嵌入式），石材包覆到牆面；靠背在東、腳端在西；不放水
@@ -429,17 +437,20 @@ export const items: readonly Item[] = [
 
   /* 客房 */
   { id: 'guest-headboard', type: 'headboardPanel', rect: [150, 945, 326, 947.5], h: [0, 1.1] },
-  { id: 'guest-bed', type: 'bed', rect: [157.5, 948, 317.5, 1150] },
-  { id: 'guest-ns-W', type: 'nightstand', rect: [108, 952, 150, 990] },
-  { id: 'guest-ns-E', type: 'nightstand', rect: [325, 952, 367, 990] },
-  { id: 'guest-lamp-W', type: 'wallLamp', rect: [118, 947.5, 128, 950], h: [1.25, 1.4] },
-  { id: 'guest-lamp-E', type: 'wallLamp', rect: [340, 947.5, 350, 950], h: [1.25, 1.4] },
+  // 歐規 160 × 200，床頭靠壁掛床頭板
+  { id: 'guest-bed', type: 'bed', rect: [157.5, 947.5, 317.5, 1147.5], mattress: 0.25, duvet: [2.2, 2.4] },
+  // 懸浮床頭櫃 42 × 38 × 16，櫃面 0.56 與床面齊（床墊 25）
+  { id: 'guest-ns-W', type: 'nightstand', rect: [108, 945, 150, 983], h: [0.4, 0.56], front: 'S' },
+  { id: 'guest-ns-E', type: 'nightstand', rect: [326, 945, 368, 983], h: [0.4, 0.56], front: 'S' },
+  { id: 'guest-lamp-W', type: 'wallLamp', at: [129, 945], facing: 'S', h: 1.02, head: [160, 985], headH: 1.21 },
+  { id: 'guest-lamp-E', type: 'wallLamp', at: [347, 945], facing: 'S', h: 1.02, head: [316, 985], headH: 1.21 },
   // 客房衣櫃：5 扇門（約 47 cm，系統櫃常見寬度）＋上方 40 cm 棉被櫃做到天花，門縫對齊
   { id: 'guest-wardrobe', type: 'cabinet', rect: [425, 1035, 485, 1270], h: [0, 2.8], front: 'W', plinth: 0.08, fronts: [
     { from: 1035, to: 1270, h: [0.08, 2.4], n: 5, kind: 'door', handle: 'chamfer' },
     { from: 1035, to: 1270, h: [2.4, 2.8], n: 5, kind: 'door', handle: 'push' },
   ] },
-  { id: 'guest-rug', type: 'rug', rect: [140, 1080, 340, 1240], material: 'rug2' },
+  // 羊毛圈絨 230 × 160：床兩側各露 35
+  { id: 'guest-rug', type: 'rug', rect: [122.5, 1060, 352.5, 1220], material: 'rug2' },
   { id: 'guest-curtains', type: 'curtains', label: '客房', window: 'win-guest', sides: 'both' },
 
   /* 廚房與中島 */
@@ -650,8 +661,9 @@ export interface WallDevice {
 export const wallDevices: readonly WallDevice[] = [
   // 主臥：門把側到轉角只有 2 cm，開關改在南牆、離轉角 18 cm
   { id: 'mbed-sw', kind: 'switch', gangs: 2, at: [466.5, 560], facing: 'N', h: 1.2, finish: 'white' },
-  { id: 'mbed-bed-W', kind: 'socketUsb', at: [102, 307.5], facing: 'S', h: 0.6, finish: 'dark' },
-  { id: 'mbed-bed-E', kind: 'socketUsb', at: [337, 307.5], facing: 'S', h: 0.6, finish: 'dark' },
+  // 床頭插座：懸浮床頭櫃面 0.60，插座移到櫃面上方（中心 0.72）
+  { id: 'mbed-bed-W', kind: 'socketUsb', at: [102, 307.5], facing: 'S', h: 0.72, finish: 'dark' },
+  { id: 'mbed-bed-E', kind: 'socketUsb', at: [337, 307.5], facing: 'S', h: 0.72, finish: 'dark' },
   { id: 'mbed-low', kind: 'socket', at: [420, 560], facing: 'N', h: 0.3, finish: 'white' },
   // 主衛浴：臥室側門把旁只剩 5 cm，開關（燈、暖風機、排風）裝在床頭格柵牆上、離門洞 15 cm
   { id: 'mbath-sw', kind: 'switch', gangs: 3, at: [385, 307.5], facing: 'S', h: 1.2, finish: 'dark' },
@@ -663,8 +675,8 @@ export const wallDevices: readonly WallDevice[] = [
   { id: 'study-low', kind: 'socket', at: [484.5, 720], facing: 'W', h: 0.3, finish: 'white' },
   // 客房：門把側只有 8 cm 就碰到衣櫃、鉸鏈側會被門片擋住，開關裝在衣櫃靠門的側板上
   { id: 'guest-sw', kind: 'switch', gangs: 2, at: [455, 1035], facing: 'N', h: 1.2, finish: 'dark' },
-  { id: 'guest-bed-W', kind: 'socketUsb', at: [129, 945], facing: 'S', h: 0.6, finish: 'white' },
-  { id: 'guest-bed-E', kind: 'socketUsb', at: [346, 945], facing: 'S', h: 0.6, finish: 'white' },
+  { id: 'guest-bed-W', kind: 'socketUsb', at: [129, 945], facing: 'S', h: 0.72, finish: 'white' },
+  { id: 'guest-bed-E', kind: 'socketUsb', at: [347, 945], facing: 'S', h: 0.72, finish: 'white' },
   { id: 'guest-low', kind: 'socket', at: [220, 1274], facing: 'N', h: 0.3, finish: 'white' },
   // 玄關：大門門把側整面是鞋櫃（正面是櫃門），開關（玄關、客廳、餐廳、間接燈）與對講機改裝在鞋櫃旁露出的實牆量體南面
   // （x 937–980），離大門約 1.2 m
