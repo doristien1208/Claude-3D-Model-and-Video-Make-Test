@@ -42,12 +42,12 @@
 
 | 物件 | 參考 | 現在 | 建議 | 造型重點 |
 |---|---|---|---|---|
-| 客廳大型植物 | 琴葉榕（[尺寸](https://www.dimensions.com/element/fiddle-leaf-fig-potted-tall-ficus-lyrata)） | 圓柱盆＋橢球 | 株高 150–170、樹冠 60–80；盆 Ø40 × 40 灰褐纖維土 | 單幹、約 40 片提琴形大葉（15–30 長） |
-| 陽台植物 | 橄欖樹 | 圓柱盆＋橢球 | 株高 150–180、樹冠 70–90；盆 Ø42 × 41（[Rodborough](https://www.yesterhome.com/apps/fireamp/products/set-of-4-rodborough-planters)） | 細枝、數百片灰綠細葉 |
-| 花瓶 | [Kähler Hammershøi 200](https://finnishdesignshop.com/en-au/product/hammershoi-vase-200-mm-white) | Ø12 × 20 圓柱 | Ø16.5 × 20，橫向溝紋霧面瓷；插乾燥花枝 | 車削外形＋溝紋 |
-| 書 | 一般書 15 × 21、大開本 25 × 25 / 28 × 28 | 隨機方塊塞滿 | 直立 5–9 本一組、高低漸變；3–5 本橫放一疊（上面放小物）；每層留約 1/3 空間 | 書背圓角、封面與書口顏色 |
-| 收納箱 | [IKEA TJENA](https://www.ikea.com.tr/en/p40469302) | 牛皮紙方塊 48 × 26 × 30 | 35 × 50 × 30 附蓋 | 蓋子、把手孔 |
-| 掛畫（新增，選用） | [IKEA RÖDALM](https://www.ikea.com.tr/en/product/rodalm-oak-effect-50x70-cm-wooden-frame-60566401)、Moebe 細框 | 無 | 沙發後南牆 50 × 70 ×2；走廊或臥室 50 × 70 ×1；中心高 150 | 細木框、壓克力面 |
+| 客廳大型植物 | 琴葉榕（[NParks](https://www.nparks.gov.sg/florafaunaweb/flora/2/9/2911)、[UF/IFAS](https://ask.ifas.ufl.edu/publication/ST254)） | 圓柱盆＋橢球 | 株高約 160、樹冠從 0.9 m 起；盆 Ø40 × 40 灰褐纖維土 | 標準型單幹分三枝；約 36 片提琴形葉（長 21–31、寬 16–24，最寬在 7–8 成、4 成收腰、葉端平截），互生螺旋、往枝端聚集 |
+| 陽台植物 | 橄欖樹（半標準型，[Grasslands](https://www.grasslands.co.uk/products/olea-europea-olive-1-2-standard-15-litre-pot-90-cm-stem)） | 圓柱盆＋橢球 | 株高約 160、淨幹到 0.9 m、圓頭 Ø76；盆 Ø42 × 41（[Rodborough](https://www.yesterhome.com/apps/fireamp/products/set-of-4-rodborough-planters)） | 主枝 8、細枝約 120；葉 4.5–7.5 × 1.2 十字對生、表面灰綠背面銀白 |
+| 花瓶 | [Kähler Hammershøi 200](https://finnishdesignshop.com/en-au/product/hammershoi-vase-200-mm-white) | Ø12 × 20 圓柱 | Ø16.5 × 20 桶形（最寬在 6 成高）、1 cm 素面頸；插 5 支乾燥枝 | **約 40 道直向凹槽**（尺寸表原本寫橫向，查證後更正）、白色亮釉 |
+| 書 | 一般書 15 × 21、大開本 25 × 25 / 28 × 28；[Bobby Berk](https://bobbyberk.com/how-to-style-a-bookshelf-like-a-designer/) 陳列法 | 隨機方塊塞滿 | 直立約 7 成（5–9 本一組、高低漸變）、橫疊約 3 成（3–5 本，上面放小物）；奇數層先放橫疊（之字形）；每格留約 1/3 空間；陶瓷小物整座約 5–7 件 | 封面板＋書背＋米白內頁（縮 3 mm） |
+| 收納箱 | [IKEA TJENA](https://www.ikea.cn/cn/en/p/tjena-storage-box-with-lid-white-40374356/) | 牛皮紙方塊 48 × 26 × 30 | 50 × 35 × 30 附蓋，兩個疊放 | 白色紙板（這個尺寸只有白色）、套蓋 3 cm、短邊把手孔 8.5 × 2.75 |
+| 掛畫（新增） | [IKEA RÖDALM](https://www.ikea.com/ph/en/p/roedalm-frame-black-40550104/) | 無 | 沙發後（公衛北牆）50 × 70 ×2、間距 6；客房前走廊西牆兩盞壁燈之間 ×1；中心高 150 | 黑框 52 × 72 × 3、白卡紙開口 39 × 49、聚苯乙烯面板；版畫為程式繪製的抽象構圖（拱形、日落、等高線） |
 
 ## 需要的材質貼圖
 

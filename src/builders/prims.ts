@@ -123,11 +123,9 @@ export class Build {
   /** 霧面玻璃與窗戶朝外的方向（世界座標），亮度依窗外 HDRI 設定 */
   readonly frosted: { mesh: THREE.Mesh; out: THREE.Vector3 }[] = [];
   readonly mat: Materials['mat'];
-  readonly books: Materials['books'];
 
   constructor(materials: Materials) {
     this.mat = materials.mat;
-    this.books = materials.books;
     this.root.name = 'house';
   }
 

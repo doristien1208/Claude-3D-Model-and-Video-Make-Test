@@ -18,9 +18,6 @@ export const TINTS = {
   rug2: [2.287, 2.452, 2.519],
 } as const satisfies Record<string, RGB>;
 
-/** 書櫃陳列師常用的書色：象牙、沙色、燕麥、灰褐、炭灰，加一兩本鏽紅、灰綠（去掉書衣、色塊分群） */
-const BOOK_COLORS = [0xede7da, 0xcdbfa8, 0xbfb2a0, 0x8e8070, 0x3a3a38, 0x9a5a3c, 0x8f9a80];
-
 /**
  * 毛圈布的法線貼圖：隨機小圓丘（毛圈約 1.5 mm）疊加、可無縫拼接；一張代表 4 cm（世界座標 UV 下 repeat 25）。
  * 走近時才看得到，遠看靠 sheen 表現毛絨感。
@@ -202,12 +199,26 @@ export function createMaterials(tex: TextureLibrary) {
     tv: new THREE.MeshPhysicalMaterial({ color: 0x0e0e0e, roughness: 0.05, ior: 1.22 }),
     // 電視機身與窄邊框（霧黑）
     tvBody: M({ color: 0x161617, roughness: 0.5 }),
-    // 植物葉片（琴葉榕、橡膠樹一類的蠟質葉）
-    plant: M({ color: 0x3a4a2e, roughness: 0.45, side: THREE.DoubleSide }),
+    // 植物葉片（琴葉榕一類的蠟質葉）：正面深綠亮面、背面淺綠霧面（葉片用正反兩個 InstancedMesh）
+    plant: M({ color: 0x2f4426, roughness: 0.35 }),
+    plantUnder: M({ color: 0x5b6d45, roughness: 0.6, side: THREE.BackSide }),
+    plantStem: M({ color: 0x4d5a36, roughness: 0.6 }),
+    bark: M({ color: 0x6b5a48, roughness: 0.85 }),
+    // 橄欖：表面灰綠、背面銀白（細鱗片），樹皮灰
+    oliveLeaf: M({ color: 0x4f5c3e, roughness: 0.55 }),
+    oliveUnder: M({ color: 0xa3a894, roughness: 0.7, side: THREE.BackSide }),
+    oliveBark: M({ color: 0x7a7266, roughness: 0.9 }),
+    soil: M({ color: 0x3a2e25, roughness: 1 }),
+    // 灰褐纖維土盆（琴葉榕）、灰色水泥感盆（Rodborough）
+    potFibre: M({ color: 0x8b8278, roughness: 0.92 }),
+    potStone: M({ color: 0x9c9a94, roughness: 0.95 }),
+    // Hammershøi 白色亮釉瓷、乾燥枝
+    glaze: M({ color: 0xe8e5de, roughness: 0.12 }),
+    dried: M({ color: 0xb39a78, roughness: 0.9 }),
     // 霧面施釉陶盆（炭灰）
     pot: M({ color: 0x3c3c3a, roughness: 0.6 }),
-    // 牛皮紙箱（physicallybased.info 實測 "Cardboard"）
-    kraft: M({ color: 0xa07e5d, roughness: 0.85 }),
+    // IKEA TJENA 白色紙板收納箱
+    tjena: M({ color: 0xe9e7e1, roughness: 0.85 }),
     outside: M({ color: 0x9e9a92, roughness: 1 }),
     glow: M({ color: 0xffe2bd, emissive: 0xffb46b, emissiveIntensity: 3 }),
     glowSoft: M({ color: 0xf0e2cc, emissive: 0xffbb7a, emissiveIntensity: 1.2, roughness: 1 }),
@@ -254,17 +265,12 @@ export function createMaterials(tex: TextureLibrary) {
     // 衛生紙、霧面白陶盆
     paper: M({ color: 0xf2f0ea, roughness: 0.9 }),
     potWhite: M({ color: 0xd8d3c8, roughness: 0.75 }),
+    // 書封（白底，顏色由 InstancedMesh 的實例顏色決定；霧面上膜與布面精裝之間）
+    bookCover: M({ color: 0xffffff, roughness: 0.7 }),
   };
   for (const [k, m] of Object.entries(mat)) m.name = k;
 
-  const books = BOOK_COLORS.map((c, i) => {
-    // 霧面上膜書封 0.5–0.6、布面精裝 0.85
-    const m = M({ color: c, roughness: i % 2 ? 0.55 : 0.85 });
-    m.name = `book${i}`;
-    return m;
-  });
-
-  return { mat, books };
+  return { mat };
 }
 
 export type Materials = ReturnType<typeof createMaterials>;

@@ -62,6 +62,7 @@ const registry: { [T in ItemType]: Builder<T> } = {
   plant: decor.plant,
   vase: decor.vase,
   storageBox: decor.storageBox,
+  art: decor.art,
 };
 
 /** 把 from 之後新加入 root 的物件標上來源，供碰撞檢查與除錯辨識 */

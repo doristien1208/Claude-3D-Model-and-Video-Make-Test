@@ -3,7 +3,8 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { X, Z } from '../core/units';
 import { CEILING_H as H, lighting, type Front, type Rect, type Side } from '../data/layout';
 import type { ItemOf } from '../data/query';
-import { rectAlong, rng, worldUV, type Build } from './prims';
+import { fillShelf, type Bay } from './books';
+import { FACING_YAW, rectAlong, rng, worldUV, type Build } from './prims';
 
 /*
  * 系統櫃與木作。尺寸依調查（pro360 系統櫃尺寸、100室內設計、IKEA PAX／METOD、Blum）：
@@ -138,7 +139,7 @@ export function cabinet(b: Build, it: ItemOf<'cabinet'>): void {
 
 /** 開放書櫃：背板、側板、立板（每格 ≤ 80 cm）、25 mm 層板，各格隨機排書 */
 export function shelf(b: Build, it: ItemOf<'shelf'>): void {
-  const { mat, books } = b;
+  const { mat } = b;
   const [x1, y1, x2, y2] = it.rect, h = it.h, n = it.shelves, back = it.back;
   const r = rng(it.seed || 11), along = back === 'E' || back === 'W', T = BOARD;
   const L0 = along ? y1 : x1, L1 = along ? y2 : x2, D0 = along ? x1 : y1, D1 = along ? x2 : y2;
@@ -153,23 +154,25 @@ export function shelf(b: Build, it: ItemOf<'shelf'>): void {
   P(L0, L0 + T, D0, D1, 0, h, mat.walnut);
   P(L1 - T, L1, D0, D1, 0, h, mat.walnut);
   for (let i = 1; i < bays; i++) P(edges[i][0] - T, edges[i][0], D0, D1, 0, h, mat.walnut);
-  // 層板（底板到頂板）與書
-  const t = SHELF_T;
+  // 層板（底板到頂板）
+  const t = SHELF_T, levels: [number, number][] = [];
   for (let i = 0; i <= n; i++) {
     const y = (i * (h - t)) / n;
     for (const [e0, e1] of edges) P(e0, e1, D0, D1, y, y + t, mat.walnut);
-    if (i === n) continue;
-    const top = ((i + 1) * (h - t)) / n;
-    for (const [e0, e1] of edges) {
-      let l = e0 + 1;
-      while (l < e1 - 6) {
-        const w = 1.6 + r() * 3.2, hh = Math.min(0.18 + r() * 0.14, top - y - t - 0.03);
-        if (r() < 0.18) { l += 6 + r() * 10; continue; }
-        P(l, Math.min(l + w, e1 - 1), D0 + 3, D1 - 3, y + t, y + t + hh, books[(r() * books.length) | 0]);
-        l += w + 0.2;
-      }
-    }
+    if (i < n) levels.push([y + t, ((i + 1) * (h - t)) / n - y - t]);
   }
+  // 書與小物（books.ts）：群組本地 x 沿書櫃、z 從背板內面往前、原點在書櫃中線
+  const front: Side = ({ N: 'S', S: 'N', E: 'W', W: 'E' } as const)[back];
+  const g = new THREE.Group(), Lm = (L0 + L1) / 2, backFace = backAtMin ? D0 + T : D1 - T;
+  g.position.set(along ? X(backFace) : X(Lm), 0, along ? Z(Lm) : Z(backFace));
+  g.rotation.y = FACING_YAW[front];
+  b.root.add(g);
+  const sign = along ? (front === 'W' ? 1 : -1) : (front === 'S' ? 1 : -1);
+  const bayX: Bay[] = edges.map(([e0, e1]) => {
+    const a = (sign * (e0 - Lm)) / 100, c = (sign * (e1 - Lm)) / 100;
+    return { x0: Math.min(a, c), x1: Math.max(a, c) };
+  });
+  fillShelf(b, g, bayX, levels, (D1 - D0 - T) / 100, r);
   b.solid(it.rect);
 }
 

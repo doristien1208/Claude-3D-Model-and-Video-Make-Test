@@ -321,7 +321,8 @@ export type Item =
   | { id: string; type: 'fridge'; rect: Rect; h: number }
   | { id: string; type: 'barStool'; at: Pt }
   | { id: string; type: 'pendant'; at: Pt }
-  | { id: string; type: 'plant'; at: Pt; potR: number; potH: number; leafR: number; leafSY: number; leafY: number }
+  // 盆栽：琴葉榕（客廳）或橄欖樹（陽台），seed 決定枝葉排列
+  | { id: string; type: 'plant'; at: Pt; kind: 'fiddleLeaf' | 'olive'; seed: number }
   | { id: string; type: 'sofaL'; rect: Rect }
   | { id: string; type: 'coffeeTable'; at: Pt; r: number }
   | { id: string; type: 'armchair'; at: Pt; faceTo: Pt }
@@ -329,8 +330,12 @@ export type Item =
   | { id: string; type: 'floorLamp'; at: Pt; shade: Pt }
   // 壁掛電視：rect 為機身（不含離牆縫），facing 為螢幕朝向
   | { id: string; type: 'tv'; rect: Rect; h: HRange; facing: Side }
-  | { id: string; type: 'vase'; at: Pt; r: number; h: HRange }
-  | { id: string; type: 'storageBox'; rect: Rect; h: number }
+  // 花瓶（Kähler Hammershøi 200＋乾燥枝）：h 為放置面高
+  | { id: string; type: 'vase'; at: Pt; h: number; seed: number }
+  // 附蓋收納箱（IKEA TJENA 50 × 35 × 30）：rect 為箱身、h0 為放置高度（疊放用）
+  | { id: string; type: 'storageBox'; rect: Rect; h0: number }
+  // 掛畫（IKEA RÖDALM 50 × 70）：at 為牆面上的畫中心、h 為中心高
+  | { id: string; type: 'art'; at: Pt; facing: Side; h: number; print: 'arches' | 'sun' | 'contour' }
   // 走廊壁燈；at 為牆面上的位置（x 為牆面）
   | { id: string; type: 'sconce'; at: Pt; facing: Side; h: number }
 ;
@@ -478,16 +483,18 @@ export const items: readonly Item[] = [
   { id: 'island', type: 'island', rect: [580, 270, 840, 378], fronts: [
     { from: 587, to: 833, h: [0.1, 0.86], n: 6, kind: 'door', handle: 'gola' },
   ] },
-  { id: 'stool-1', type: 'barStool', at: [650, 394] },
-  { id: 'stool-2', type: 'barStool', at: [731, 394] },
-  { id: 'stool-3', type: 'barStool', at: [811, 394] },
+  // HAY AAS 32 Low ×3：對齊吊燈（x 630／710／790）
+  { id: 'stool-1', type: 'barStool', at: [630, 394] },
+  { id: 'stool-2', type: 'barStool', at: [710, 394] },
+  { id: 'stool-3', type: 'barStool', at: [790, 394] },
   // Muuto Ambit 25 ×3：中島中心兩側、間距 80，燈罩下緣 1.72（檯面 0.92 上 80 cm）
   { id: 'pendant-1', type: 'pendant', at: [630, 324] },
   { id: 'pendant-2', type: 'pendant', at: [710, 324] },
   { id: 'pendant-3', type: 'pendant', at: [790, 324] },
 
   /* 小陽台 */
-  { id: 'balcony-plant', type: 'plant', at: [1005, 192], potR: 0.22, potH: 0.45, leafR: 0.42, leafSY: 1.25, leafY: 0.95 },
+  // 橄欖樹（半標準型）盆 Ø42 × 41
+  { id: 'balcony-plant', type: 'plant', at: [1005, 192], kind: 'olive', seed: 7 },
 
   /* 客廳 */
   // Muuto Ply 270 × 360 平織羊毛毯，厚 0.6 cm
@@ -515,8 +522,12 @@ export const items: readonly Item[] = [
   { id: 'display-low', type: 'cabinet', rect: [941, 923, 1053, 966], h: [0, 0.75], front: 'N', plinth: 0.04, fronts: [
     { from: 941, to: 1053, h: [0.04, 0.75], n: 4, kind: 'door', handle: 'push' },
   ] },
-  { id: 'display-vase', type: 'vase', at: [980, 945], r: 0.06, h: [0.75, 0.95] },
-  { id: 'mbed-door-plant', type: 'plant', at: [510, 455], potR: 0.17, potH: 0.42, leafR: 0.3, leafSY: 1.6, leafY: 0.9 },
+  { id: 'display-vase', type: 'vase', at: [980, 945], h: 0.75, seed: 5 },
+  // 琴葉榕（標準型）盆 Ø40 × 40
+  { id: 'mbed-door-plant', type: 'plant', at: [510, 455], kind: 'fiddleLeaf', seed: 3 },
+  // 沙發後（公衛北牆）兩幅 50 × 70，中心高 1.5，間距 6 cm
+  { id: 'art-sofa-1', type: 'art', at: [688.5, 884.5], facing: 'N', h: 1.5, print: 'arches' },
+  { id: 'art-sofa-2', type: 'art', at: [746.5, 884.5], facing: 'N', h: 1.5, print: 'sun' },
 
   /* 公用衛浴與儲藏室 */
   // 61 cm 洗手台檯面太淺放不下檯面龍頭：下嵌盆 460 × 390（凱撒 L5115）＋入牆龍頭（hansgrohe Talis E 壁式，出水 225）
@@ -535,8 +546,11 @@ export const items: readonly Item[] = [
   { id: 'bath-head', type: 'showerHead', head: [755, 1110], from: [755, 1130], size: 0.26, h: 2.2 },
   { id: 'bath-drain', type: 'linearDrain', rect: [673, 1124.5, 763, 1128.8], h: 0.03 },
   { id: 'storage-shelf', type: 'shelf', rect: [742, 1149, 788, 1266], h: 2.2, shelves: 5, back: 'E', seed: 51 },
-  { id: 'storage-box-1', type: 'storageBox', rect: [684, 1220, 732, 1246], h: 0.3 },
-  { id: 'storage-box-2', type: 'storageBox', rect: [686, 1250, 731, 1271], h: 0.25 },
+  // IKEA TJENA 兩個疊放在原本收納箱的位置（儲藏室是走廊側的滑門，不影響開門）
+  { id: 'storage-box-1', type: 'storageBox', rect: [683, 1235, 733, 1270], h0: 0 },
+  { id: 'storage-box-2', type: 'storageBox', rect: [684, 1235.5, 732, 1269.5], h0: 0.3 },
+  // 客房前走廊西牆兩盞壁燈之間（中心 y 1160，兩側各留 34 cm）一幅 50 × 70；東牆會被儲藏室滑門開啟時擋住
+  { id: 'art-hall', type: 'art', at: [495.5, 1160], facing: 'E', h: 1.5, print: 'contour' },
   // 客房前走廊壁燈：裝在客房側牆面，上下洗牆
   // Astro Kinzo 260（26 高）：中心 1.8 m，與原本位置相同
   { id: 'hall-sconce-1', type: 'sconce', at: [495.5, 1095], facing: 'E', h: 1.8 },
