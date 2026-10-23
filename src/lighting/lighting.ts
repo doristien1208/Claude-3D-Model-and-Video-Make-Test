@@ -111,7 +111,8 @@ export class Lighting {
           break;
         }
         case 'floorLamp':
-          point(X(it.at[0]), 1.54, Z(it.at[1]), L.floorLamp);
+          // TMM：燈泡在燈罩（124–144）中間
+          point(X(it.shade[0]), 1.34, Z(it.shade[1]), L.floorLamp);
           break;
         case 'wallLamp': {
           // 床頭壁燈：面板前 8 cm，朝房間中央那一側

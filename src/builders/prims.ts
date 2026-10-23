@@ -62,6 +62,24 @@ export function gbox(g: THREE.Object3D, w: number, h: number, d: number, x: numb
   return me;
 }
 
+/** 加一個 mesh（本地座標，公尺） */
+export function add(parent: THREE.Object3D, geo: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0, cast = true): THREE.Mesh {
+  const me = new THREE.Mesh(geo, m);
+  me.position.set(x, y, z);
+  me.castShadow = cast;
+  me.receiveShadow = true;
+  parent.add(me);
+  return me;
+}
+
+/** 沿 z 軸（離牆方向）的圓柱 */
+export const zcyl = (r: number, len: number, seg = 24, open = false) => new THREE.CylinderGeometry(r, r, len, seg, 1, open).rotateX(Math.PI / 2);
+/** 沿 x 軸的圓柱 */
+export const xcyl = (r: number, len: number, seg = 24) => new THREE.CylinderGeometry(r, r, len, seg).rotateZ(Math.PI / 2);
+/** 旋轉體：profile 為 [半徑, 高] */
+export const lathe = (profile: readonly [number, number][], seg = 32) =>
+  new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), seg);
+
 /** 建構期間共用的狀態與幾何工具（輸入為 SVG px，高度為公尺） */
 export class Build {
   readonly root = new THREE.Group();

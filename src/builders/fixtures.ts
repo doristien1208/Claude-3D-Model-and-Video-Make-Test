@@ -3,7 +3,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { X, Z } from '../core/units';
 import { CEILING_H as H, DOWNLIGHT, DOWNLIGHT_RECESS, type Downlight } from '../data/layout';
 import type { ItemOf } from '../data/query';
-import type { Build } from './prims';
+import { FACING_YAW, add, gbox, lathe, worldUV, type Build } from './prims';
 
 /* ---------- 燈具 ---------- */
 
@@ -20,12 +20,50 @@ export function deskLamp(b: Build, it: ItemOf<'deskLamp'>): void {
   b.glowBox(x - 12, y + 5, x + 12, y + 17, 1.14, 1.17, mat.glowSoft);
 }
 
+/**
+ * 落地燈，參考 Santa & Cole TMM（Miguel Milá，官方規格表）：總高 166；兩支 50 cm 木條（1.2 寬 × 4.5 高、立放）十字交叉，
+ * 端部 0.8 cm 腳墊；木桿 3.2 cm，83 cm 以下是方的、以上是圓的；Ø30 × 20 羊皮紙筒形燈罩掛在燈桿旁
+ * （中心離桿 20 cm），上下緣各一支托架、高 124–144，可繞桿轉。
+ */
 export function floorLamp(b: Build, it: ItemOf<'floorLamp'>): void {
   const { mat } = b;
-  const [x, y] = it.at;
-  b.cyl(x, y, 0.14, 0, 0.03, mat.black);
-  b.cyl(x, y, 0.012, 0.03, 1.45, mat.black);
-  b.glow.push(b.cyl(x, y, 0.2, 1.4, 1.68, mat.glowSoft, { rTop: 0.17, cast: false }));
+  const [x, y] = it.at, g = new THREE.Group();
+  g.position.set(X(x), 0, Z(y));
+  b.root.add(g);
+  // 燈罩方向；十字腳轉 45°，不會頂到沙發
+  const dx = (it.shade[0] - x) / 100, dz = (it.shade[1] - y) / 100, yaw = Math.atan2(dx, dz);
+  const base = new THREE.Group();
+  base.rotation.y = yaw + Math.PI / 4;
+  g.add(base);
+  const PAD = 0.008, BAR = 0.045;
+  for (const r of [0, Math.PI / 2]) {
+    const bar = gbox(base, 0.5, BAR, 0.012, 0, PAD + BAR / 2, 0, mat.walnut, 0.003);
+    bar.rotation.y = r;
+    worldUV(bar.geometry, bar.position);
+    for (const s of [-1, 1]) {
+      const pad = gbox(base, 0.05, PAD, 0.014, 0, PAD / 2, 0, mat.black, 0.002);
+      pad.position.set(Math.cos(r) * s * 0.225, PAD / 2, -Math.sin(r) * s * 0.225);
+      pad.rotation.y = r;
+    }
+  }
+  const sq = gbox(g, 0.032, 0.83 - PAD - BAR, 0.032, 0, (0.83 + PAD + BAR) / 2, 0, mat.walnut, 0.004);
+  sq.rotation.y = yaw;
+  worldUV(sq.geometry, sq.position);
+  const pole = add(g, new THREE.CylinderGeometry(0.016, 0.016, 1.66 - 0.83, 20), mat.walnut, 0, (1.66 + 0.83) / 2, 0);
+  worldUV(pole.geometry, pole.position, 0.016);
+  // 燈罩（薄筒，內外都看得到）、上下托架與桿上的夾環、燈泡
+  const S0 = 1.24, S1 = 1.44, R = 0.15;
+  add(g, lathe([[R - 0.002, 0], [R, 0], [R, S1 - S0], [R - 0.002, S1 - S0], [R - 0.002, 0]], 64), mat.glowSoft, dx, S0, dz);
+  const far = new THREE.Vector3(dx, 0, dz).multiplyScalar((Math.hypot(dx, dz) + R) / Math.hypot(dx, dz));
+  for (const h of [S0 + 0.004, S1 - 0.004]) {
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.0025, 0.0025, far.length(), 8), mat.black);
+    rod.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), far.clone().normalize());
+    rod.position.set(far.x / 2, h, far.z / 2);
+    g.add(rod);
+    add(g, new THREE.CylinderGeometry(0.021, 0.021, 0.03, 20), mat.black, 0, h, 0);
+  }
+  b.glow.push(add(g, new THREE.SphereGeometry(0.03, 16, 12), mat.glow, dx, (S0 + S1) / 2 - 0.01, dz, false));
+  b.solids.push([X(x) - 0.18, Z(y) - 0.18, X(x) + 0.18, Z(y) + 0.18]);
 }
 
 /** 中島吊燈：吊線、燈罩、朝下發光面 */
@@ -70,8 +108,22 @@ export function downlights(b: Build, list: readonly Downlight[]): void {
 
 /* ---------- 影音 ---------- */
 
+/**
+ * 壁掛電視，參考 LG OLED65G5（144.1 × 82.6 × 2.43 cm，One Wall Design 貼牆）：整片光面面板，
+ * 黑邊左右 6.5 mm、上 7 mm、下 15 mm 由霧黑機身表現。
+ */
 export function tv(b: Build, it: ItemOf<'tv'>): void {
-  b.box(it.rect, it.h[0], it.h[1], b.mat.tv);
+  const { mat } = b;
+  const [x1, y1, x2, y2] = it.rect, [h0, h1] = it.h;
+  const alongX = it.facing === 'N' || it.facing === 'S';
+  const w = (alongX ? x2 - x1 : y2 - y1) / 100, d = (alongX ? y2 - y1 : x2 - x1) / 100;
+  const body = gbox(b.root, (x2 - x1) / 100, h1 - h0, (y2 - y1) / 100, X((x1 + x2) / 2), (h0 + h1) / 2, Z((y1 + y2) / 2), mat.tvBody, 0.003);
+  // 螢幕面板：機身正面外 0.5 mm
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(w - 0.013, h1 - h0 - 0.022), mat.tv);
+  scr.rotation.y = FACING_YAW[it.facing];
+  const n = { N: [0, -1], S: [0, 1], E: [1, 0], W: [-1, 0] }[it.facing];
+  scr.position.set(body.position.x + n[0] * (d / 2 + 0.0005), (h0 + h1) / 2 + 0.004, body.position.z + n[1] * (d / 2 + 0.0005));
+  b.root.add(scr);
 }
 
 /** 桌上螢幕：rect 為螢幕本體，支架在螢幕後方（+y），底座在桌面 */

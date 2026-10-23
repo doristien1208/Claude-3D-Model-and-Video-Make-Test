@@ -5,7 +5,7 @@ import { X, Z } from '../core/units';
 import { lighting, type Pt, type Rect, type Side, type TowelColor, type TowelHang, type TowelKind } from '../data/layout';
 import type { ItemOf } from '../data/query';
 import { BOARD, R, buildFronts, frameOf } from './millwork';
-import { FACING_YAW, gbox, worldUV, type Build } from './prims';
+import { FACING_YAW, add, gbox, lathe, worldUV, xcyl, zcyl, type Build } from './prims';
 import { eggRing, loft, roundRect, shapeOf, slab, smooth, type Section } from './shapes';
 
 /*
@@ -18,16 +18,6 @@ import { eggRing, loft, roundRect, shapeOf, slab, smooth, type Section } from '.
  *  隔屏   10 mm 超白玻璃、牆側 U 槽 15 × 15、上框與外側立框 20 × 20
  *  配件   毛巾桿支座離牆 65 mm、衛生紙架 0.66 m；琥珀玻璃瓶 Ø75 × 168＋壓頭、漱口杯 Ø85 × 107、蠟燭 Ø77 × 90
  */
-
-/** 加一個 mesh（本地座標，公尺） */
-function add(parent: THREE.Object3D, geo: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0, cast = true): THREE.Mesh {
-  const me = new THREE.Mesh(geo, m);
-  me.position.set(x, y, z);
-  me.castShadow = cast;
-  me.receiveShadow = true;
-  parent.add(me);
-  return me;
-}
 
 /** 牆面設備的本地座標：x 沿牆、y 向上（原點在 h）、z 離牆 */
 function wallGroup(b: Build, at: Pt, facing: Side, h: number): THREE.Group {
@@ -43,14 +33,6 @@ const alongWall = (facing: Side, from: Pt, to: Pt) => {
   const yaw = FACING_YAW[facing];
   return (X(to[0]) - X(from[0])) * Math.cos(yaw) - (Z(to[1]) - Z(from[1])) * Math.sin(yaw);
 };
-
-/** 沿 z 軸（離牆方向）的圓柱 */
-const zcyl = (r: number, len: number, seg = 24, open = false) => new THREE.CylinderGeometry(r, r, len, seg, 1, open).rotateX(Math.PI / 2);
-/** 沿 x 軸的圓柱 */
-const xcyl = (r: number, len: number, seg = 24) => new THREE.CylinderGeometry(r, r, len, seg).rotateZ(Math.PI / 2);
-/** 旋轉體：profile 為 [半徑, 高] */
-const lathe = (profile: readonly [number, number][], seg = 32) =>
-  new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), seg);
 
 /* ---------- 浴缸 ---------- */
 

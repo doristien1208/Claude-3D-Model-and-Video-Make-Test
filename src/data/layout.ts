@@ -269,7 +269,8 @@ export type Item =
   | { id: string; type: 'wallLamp'; rect: Rect; h: HRange }
   // 開放書櫃；back 為背板所在側，seed 決定書本排列
   | { id: string; type: 'shelf'; rect: Rect; h: number; shelves: number; back: Side; seed: number }
-  | { id: string; type: 'rug'; rect: Rect; material: RugMaterial; inner?: Rect }
+  // 地毯；h 為厚度（預設 1.2 cm），inner 為淺色內層
+  | { id: string; type: 'rug'; rect: Rect; material: RugMaterial; h?: number; inner?: Rect }
   // 雙層蛇形簾（紗簾＋布簾）掛在窗簾盒內；sides 為收在哪一側，bottom 為下緣高度（預設落地，離地 1 cm）
   // span 為窗簾實際使用的軌道範圍（預設為整個窗簾盒）
   | { id: string; type: 'curtains'; label: string; window: string; sides: 'both' | 'start' | 'end'; bottom?: number; span?: readonly [number, number] }
@@ -319,8 +320,10 @@ export type Item =
   | { id: string; type: 'sofaL'; rect: Rect }
   | { id: string; type: 'coffeeTable'; at: Pt; r: number }
   | { id: string; type: 'armchair'; at: Pt; faceTo: Pt }
-  | { id: string; type: 'floorLamp'; at: Pt }
-  | { id: string; type: 'tv'; rect: Rect; h: HRange }
+  // 落地燈：at 為燈桿，shade 為燈罩中心（燈罩掛在燈桿旁）
+  | { id: string; type: 'floorLamp'; at: Pt; shade: Pt }
+  // 壁掛電視：rect 為機身（不含離牆縫），facing 為螢幕朝向
+  | { id: string; type: 'tv'; rect: Rect; h: HRange; facing: Side }
   | { id: string; type: 'vase'; at: Pt; r: number; h: HRange }
   | { id: string; type: 'storageBox'; rect: Rect; h: number }
   // 走廊壁燈；at 為牆面上的位置（x 為牆面）
@@ -471,13 +474,16 @@ export const items: readonly Item[] = [
   { id: 'balcony-plant', type: 'plant', at: [1005, 192], potR: 0.22, potH: 0.45, leafR: 0.42, leafSY: 1.25, leafY: 0.95 },
 
   /* 客廳 */
-  { id: 'living-rug', type: 'rug', rect: [618, 568, 976, 838], material: 'rug', inner: [624, 576, 970, 830] },
+  // Muuto Ply 270 × 360 平織羊毛毯，厚 0.6 cm
+  { id: 'living-rug', type: 'rug', rect: [617, 568, 977, 838], material: 'rug', h: 0.006, inner: [624, 576, 970, 830] },
   // L 型沙發：長邊 x 622–716（椅背朝西），短邊 x 716–829、y 753–822（椅背朝南）；房子加寬後往東移 30 cm，
   // 椅背到書房門那面牆的走道 126.5 cm
   { id: 'sofa', type: 'sofaL', rect: [622, 589, 829, 822] },
-  { id: 'coffee-table', type: 'coffeeTable', at: [838, 676], r: 0.45 },
-  { id: 'armchair', type: 'armchair', at: [942, 808.5], faceTo: [838, 676] },
-  { id: 'floor-lamp', type: 'floorLamp', at: [735, 597] },
+  // 茶几 Gubi Epic Ø80：放在 L 型中間，離兩邊坐墊前緣各 40 cm（長邊座前緣 x 714、短邊 y 730）
+  { id: 'coffee-table', type: 'coffeeTable', at: [794, 650], r: 0.4 },
+  { id: 'armchair', type: 'armchair', at: [942, 808.5], faceTo: [794, 650] },
+  // TMM 落地燈：燈罩中心離燈桿 20 cm，轉向長邊第一個座位
+  { id: 'floor-lamp', type: 'floorLamp', at: [735, 597], shade: [716.5, 605] },
   { id: 'tv-slat', type: 'slatWall', rect: [1081, 470, 1089, 745] },
   // 客廳窗南端緊貼電視牆，窗簾只能往北收；布簾收起時會擋住約 20 cm 的玻璃（已確認）
   // 軌道從 y 268 起，避開陽台拉門的門框（到 y 267）
@@ -486,7 +492,8 @@ export const items: readonly Item[] = [
   { id: 'tv-cabinet', type: 'cabinet', rect: [1037, 520, 1081, 710], h: [0.18, 0.5], front: 'W', underGlow: true, fronts: [
     { from: 520, to: 710, h: [0.18, 0.5], n: 4, kind: 'door', handle: 'push' },
   ] },
-  { id: 'tv', type: 'tv', rect: [1077, 549, 1080.5, 692], h: [0.95, 1.76] },
+  // LG OLED65G5（144.1 × 82.6 × 2.43 cm）貼牆，離格柵面 2 mm；中心高度不變
+  { id: 'tv', type: 'tv', rect: [1078.37, 548.45, 1080.8, 692.55], h: [0.942, 1.768], facing: 'W' },
   // 展示角：高書櫃貼東牆，矮櫃貼實牆，接成 L 型
   { id: 'display-shelf', type: 'shelf', rect: [1053, 752, 1089, 966], h: 2.2, shelves: 6, back: 'E', seed: 41 },
   { id: 'display-low', type: 'cabinet', rect: [941, 923, 1053, 966], h: [0, 0.75], front: 'N', plinth: 0.04, fronts: [

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { X, Z } from '../core/units';
 import type { ItemOf } from '../data/query';
-import type { Build } from './prims';
+import { add, gbox, worldUV, type Build } from './prims';
+import { cushion, drape, pillow, roundedPolygon, slab } from './shapes';
 
 /** 雙人床，床頭在北側 (y1) */
 export function bed(b: Build, it: ItemOf<'bed'>): void {
@@ -23,10 +24,11 @@ export function nightstand(b: Build, it: ItemOf<'nightstand'>): void {
   b.box(it.rect, 0.12, 0.5, b.mat.walnut, { solid: true });
 }
 
+/** 地毯；h 為厚度（客廳 Muuto Ply 平織 0.6 cm），inner 為淺色內層（只高出 1 mm，像織出來的色塊） */
 export function rug(b: Build, it: ItemOf<'rug'>): void {
-  b.box(it.rect, 0, 0.012, b.mat[it.material], { cast: false });
-  // 客廳地毯的內層（淺色）
-  if (it.inner) b.box(it.inner, 0.012, 0.014, b.mat.rug2, { cast: false });
+  const h = it.h ?? 0.012;
+  b.box(it.rect, 0, h, b.mat[it.material], { cast: false });
+  if (it.inner) b.box(it.inner, h, h + 0.001, b.mat.rug2, { cast: false });
 }
 
 /** 書桌：桌板＋四支桌腳（內縮 4 px） */
@@ -47,54 +49,245 @@ export function officeChair(b: Build, it: ItemOf<'officeChair'>): void {
   b.bx(x - 24, y - 26, x + 24, y - 18, 0.52, 1.02, mat.chair);
 }
 
-/** L 型沙發；模型以外框西北角為原點（px），長邊椅背朝西、短邊椅背朝南 */
+/** 圓角方塊（群組本地座標，公尺），補上公尺 uv */
+function rbox(g: THREE.Object3D, x0: number, z0: number, x1: number, z1: number, y0: number, y1: number, m: THREE.Material, r: number): THREE.Mesh {
+  const me = gbox(g, x1 - x0, y1 - y0, z1 - z0, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, m, r);
+  worldUV(me.geometry, me.position);
+  return me;
+}
+
+/**
+ * 水平 L 形或任意多邊形的軟包塊：平面 pts（公尺）、y0–y1，角圓 r、上下緣倒圓 bevel。
+ * r 要比 bevel 大：r186 的 ExtrudeGeometry 拿內縮 bevel 後的輪廓做三角化，圓角縮成同一點會讓 earcut 拉出跨過缺角的三角形。
+ */
+function padded(g: THREE.Object3D, pts: readonly [number, number][], y0: number, y1: number, m: THREE.Material, r: number, bevel: number): THREE.Mesh {
+  const geo = slab(roundedPolygon(pts, Math.max(r, bevel + 0.01)), y1 - y0, bevel);
+  const me = add(g, geo, m, 0, y0, 0);
+  worldUV(geo, me.position);
+  return me;
+}
+
+/** 以三個軸（本地 x、y、z 在父座標的方向）擺放幾何 */
+function orient(geo: THREE.BufferGeometry, ax: THREE.Vector3, ay: THREE.Vector3, az: THREE.Vector3): THREE.BufferGeometry {
+  return geo.applyMatrix4(new THREE.Matrix4().makeBasis(ax, ay, az));
+}
+
+/**
+ * 靠著椅背的軟墊／抱枕：幾何平放（x 寬、y 厚、z 高），bottom 為下緣中點、out 為朝座位的水平方向，
+ * 往後仰 tilt、在自己平面內轉 roll（弧度）。
+ */
+function leanOn(g: THREE.Object3D, geo: THREE.BufferGeometry, m: THREE.Material, bottom: THREE.Vector3, out: THREE.Vector3, h: number, tilt: number, roll = 0): THREE.Mesh {
+  const up = new THREE.Vector3(0, 1, 0);
+  const ny = out.clone().multiplyScalar(-Math.sin(tilt)).addScaledVector(up, Math.cos(tilt)).normalize();  // 高度方向（往椅背仰）
+  const nz = out.clone().multiplyScalar(Math.cos(tilt)).addScaledVector(up, -Math.sin(tilt)).normalize();  // 厚度方向（朝座位）
+  const nx = new THREE.Vector3().crossVectors(nz, ny);
+  // 平放的 (x 寬, y 厚, z 高) → (nx, nz, ny)；先在平面內轉 roll
+  const q = new THREE.Matrix4().makeRotationY(roll);
+  orient(geo.applyMatrix4(q), nx, nz, ny);
+  return add(g, geo, m, bottom.x + ny.x * (h / 2), bottom.y + ny.y * (h / 2), bottom.z + ny.z * (h / 2));
+}
+
+/**
+ * L 型沙發，比例參考 &Tradition Develius（模組 89、座高 42、扶手高 60）：外框 207 × 233 不變，
+ * 長邊椅背朝西、短邊椅背朝南，兩邊座深都是 92、實際坐深 58。
+ * 由下往上：內縮 6 cm、高 4 cm 的深色踢腳（沙發看起來懸浮）→ L 型座台（到 24）→ L 型椅背框（62，上緣倒圓）
+ * 與兩側扶手（24 寬、60 高）→ 坐墊 3 塊厚 19（座高 43）→ 椅背墊 5 塊（20 厚、48 高、後仰 7°，靠在座台上）
+ * → 抱枕 5 個（50 × 50 ×2、45 × 45 ×2、30 × 50 腰枕）→ 東側扶手披一條三折的毯子（HAY Mono 130 × 180）。
+ */
 export function sofaL(b: Build, it: ItemOf<'sofaL'>): void {
   const { mat } = b;
-  const [ox, oy] = it.rect;
-  const p = (r: readonly number[], h0: number, h1: number, m: THREE.Material, solid?: boolean) =>
-    b.bx(ox + r[0], oy + r[1], ox + r[2], oy + r[3], h0, h1, m, { solid });
-  p([0, 0, 94, 233], 0.08, 0.42, mat.fabric, true);       // 長邊座框
-  p([94, 164, 207, 233], 0.08, 0.42, mat.fabric, true);   // 短邊座框
-  p([0, 0, 22, 233], 0.42, 0.82, mat.fabric);             // 長邊椅背
-  p([22, 211, 207, 233], 0.42, 0.82, mat.fabric);         // 短邊椅背
-  p([0, 0, 94, 19], 0.42, 0.62, mat.fabric);              // 北側扶手
-  p([187, 164, 207, 211], 0.42, 0.62, mat.fabric);        // 東側扶手
-  for (const [a, c, d, e] of [[22, 19, 94, 82], [22, 83, 94, 146], [22, 147, 94, 211], [95, 164, 141, 211], [142, 164, 187, 211]])
-    p([a + 0.5, c + 0.5, d - 0.5, e - 0.5], 0.42, 0.5, mat.fabricL);
-  p([24, 25, 40, 67], 0.5, 0.78, mat.ochre);
-  p([24, 157, 40, 199], 0.5, 0.76, mat.throw);
-  p([148, 193, 190, 209], 0.5, 0.75, mat.ochre);
+  const [ox, oy, ex, ey] = it.rect;
+  const W = (ex - ox) / 100, L = (ey - oy) / 100;
+  const D = 0.92, ARM = 0.24, BK = 0.12, PL = 0.04, DECK = 0.24, SEAT = 0.43, ARM_H = 0.6, BACK_H = 0.62;
+  const g = new THREE.Group();
+  g.position.set(X(ox), 0, Z(oy));
+  b.root.add(g);
+  const up = mat.sofa;
+
+  // 踢腳（內縮 6 cm）
+  const k = 0.06;
+  padded(g, [[k, k], [D - k, k], [D - k, L - D + k], [W - k, L - D + k], [W - k, L - k], [k, L - k]], 0, PL, mat.black, 0.01, 0);
+  // 座台、椅背框、扶手
+  padded(g, [[BK, ARM], [D, ARM], [D, L - D], [W - ARM, L - D], [W - ARM, L - BK], [BK, L - BK]], PL, DECK, up, 0.02, 0.02);
+  padded(g, [[0, 0], [BK, 0], [BK, L - BK], [W, L - BK], [W, L], [0, L]], PL, BACK_H, up, 0.03, 0.03);
+  rbox(g, BK, 0, D, ARM, PL, ARM_H, up, 0.035);
+  rbox(g, W - ARM, L - D, W, L - BK, PL, ARM_H, up, 0.035);
+
+  // 坐墊：椅背墊下緣前方到座前緣（58 深）；長邊分兩塊（第二塊含轉角）、短邊一塊
+  const T = 0.004, front = 0.34, zEnd = L - front;   // 椅背墊下緣前緣離外框
+  const seat = (x0: number, z0: number, x1: number, z1: number) =>
+    add(g, cushion(x1 - x0 - T, z1 - z0 - T, SEAT - DECK, { e: 0.045, r: 0.035, crown: 0.012 }), up, (x0 + x1) / 2, DECK, (z0 + z1) / 2);
+  const zMid = (ARM + zEnd) / 2;
+  seat(front, ARM, D, zMid);
+  seat(front, zMid, D, zEnd);
+  seat(D, L - D, W - ARM, zEnd);
+
+  // 椅背墊：下緣前緣貼著坐墊後緣，往後仰靠在椅背框上緣
+  const TILT = 7 * (Math.PI / 180), BH = 0.48, BT = 0.2;
+  const back = (w: number, at: THREE.Vector3, out: THREE.Vector3) => {
+    const geo = cushion(w - T, BH, BT, { e: 0.05, r: 0.04, crown: 0.015, crownBottom: 0.008 }).translate(0, -BT, 0);
+    // 以下緣前緣為軸後仰：先把高度方向移到 0–BH
+    geo.translate(0, 0, BH / 2);
+    const side = new THREE.Vector3(-out.z, 0, out.x);
+    orient(geo, side, out, new THREE.Vector3(0, 1, 0));
+    geo.applyMatrix4(new THREE.Matrix4().makeRotationAxis(side, TILT));
+    return add(g, geo, up, at.x, at.y, at.z);
+  };
+  const E = new THREE.Vector3(1, 0, 0), N = new THREE.Vector3(0, 0, -1);
+  const wn = 3, ww = (L - BK - ARM) / wn;
+  for (let i = 0; i < wn; i++) back(ww, new THREE.Vector3(front, DECK, ARM + ww * (i + 0.5)), E);
+  const sn = 2, sw = (W - ARM - front) / sn;
+  for (let i = 0; i < sn; i++) back(sw, new THREE.Vector3(front + sw * (i + 0.5), DECK, zEnd), N);
+
+  // 抱枕：靠在椅背墊前、下緣坐在坐墊上，後仰約 18°
+  const P = (w: number, h: number, t: number, m: THREE.Material, bottom: THREE.Vector3, out: THREE.Vector3, tilt: number, roll: number) =>
+    leanOn(g, pillow(w, h, t), m, bottom, out, h, tilt * (Math.PI / 180), roll * (Math.PI / 180));
+  const sy = SEAT + 0.008;
+  P(0.5, 0.5, 0.17, mat.pillowCream, new THREE.Vector3(front + 0.1, sy, 0.56), E, 18, -4);
+  P(0.45, 0.45, 0.15, mat.ochre, new THREE.Vector3(front + 0.2, sy, 0.7), E, 22, 6);
+  P(0.5, 0.5, 0.17, mat.pillowCream, new THREE.Vector3(front + 0.1, sy, zEnd - 0.34), E, 17, 3);
+  P(0.45, 0.45, 0.15, mat.ochre, new THREE.Vector3(front + 0.4, sy, zEnd - 0.1), N, 20, -5);
+  P(0.5, 0.3, 0.12, mat.pillowRust, new THREE.Vector3(W - ARM - 0.45, sy, zEnd - 0.08), N, 14, 2);
+
+  // 披毯：刷毛羊毛約 0.8 kg（約 2.5 mm 厚），三折後 43 寬、0.8 cm 厚，從坐墊上爬過東側扶手、在外側垂下；垂下的部分有直向波浪摺
+  const TH = 0.008, h2 = TH / 2, ax = W - ARM, top = ARM_H, rr = 0.035 + h2;
+  const path: [number, number][] = [[ax - 0.18, sy + 0.006], [ax - 0.13, sy + 0.003], [ax - 0.05, sy - 0.003], [ax - 0.016, sy + 0.01],
+    [ax - h2, sy + 0.08], [ax - h2, top - 0.035]];
+  for (let i = 1; i <= 4; i++) {
+    const a = Math.PI - (i / 4) * (Math.PI / 2);
+    path.push([ax + 0.035 + rr * Math.cos(a), top - 0.035 + rr * Math.sin(a)]);
+  }
+  for (let i = 0; i <= 4; i++) {
+    const a = Math.PI / 2 - (i / 4) * (Math.PI / 2);
+    path.push([W - 0.035 + rr * Math.cos(a), top - 0.035 + rr * Math.sin(a)]);
+  }
+  path.push([W + h2 + 0.001, 0.45], [W + h2 + 0.003, 0.33], [W + h2 + 0.006, 0.22], [W + h2 + 0.01, 0.12]);
+  // 路徑長：繞過外側圓角之後開始垂下
+  let hang = 0, len = 0;
+  for (let i = 1; i < path.length; i++) {
+    len += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
+    if (!hang && path[i][0] >= W + h2 && path[i][1] <= top - 0.035) hang = len;
+  }
+  // 垂下處的直向波浪摺（波長 11 cm、往下漸大到 9 mm），坐墊與扶手上只有 1–2 mm 的鬆軟起伏
+  const TW = 0.43, zc = 1.76, rip = (s: number, z: number) =>
+    0.009 * THREE.MathUtils.smoothstep(s, hang, hang + 0.3) * Math.sin(z * 55 + 1.3) + 0.0015 * Math.sin(s * 31 + z * 17) * Math.sin(z * 23 - s * 9);
+  add(g, drape(path, TW, TH, rip), mat.wool, 0, 0, zc);
+  // 流蘇：下緣每 1.2 cm 一根，長 3 cm，跟著波浪
+  const [fx, fy] = path[path.length - 1], fringe = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.0018, 0.0012, 0.03, 4), mat.wool, 36);
+  const fm = new THREE.Matrix4();
+  for (let i = 0; i < 36; i++) {
+    const z = -TW / 2 + 0.006 + (i * (TW - 0.012)) / 35;
+    fringe.setMatrixAt(i, fm.makeTranslation(fx + rip(len, z) + 0.001 * Math.sin(i * 2.1), fy - 0.016, zc + z));
+  }
+  fringe.castShadow = true;
+  g.add(fringe);
+
+  b.solids.push([X(ox), Z(oy), X(ox) + D, Z(ey)], [X(ox) + D, Z(ey) - D, X(ex), Z(ey)]);
 }
 
+/**
+ * 茶几，參考 Gubi Epic Ø80（GamFratesi，型錄）：洞石圓桌板厚 2 cm、方邊（微倒角 1.5 mm），
+ * 六角柱底座每邊 23 cm（對角 46、對邊 39.8），總高 38.5。
+ */
 export function coffeeTable(b: Build, it: ItemOf<'coffeeTable'>): void {
   const { mat } = b;
-  const [x, y] = it.at;
-  b.cyl(x, y, it.r, 0.34, 0.38, mat.walnut, { solid: true });
-  b.cyl(x, y, 0.3, 0, 0.34, mat.black);
+  const [x, y] = it.at, H = 0.385, T = 0.02, n = 96;
+  const g = new THREE.Group();
+  g.position.set(X(x), 0, Z(y));
+  b.root.add(g);
+  const circle = Array.from({ length: n }, (_, i) => new THREE.Vector2(it.r * Math.cos((i / n) * 2 * Math.PI), it.r * Math.sin((i / n) * 2 * Math.PI)));
+  const top = add(g, slab(new THREE.Shape(circle), T, 0.0015), mat.travertine, 0, H - T, 0);
+  worldUV(top.geometry, top.getWorldPosition(new THREE.Vector3()));
+  const hex = Array.from({ length: 6 }, (_, i): [number, number] => [0.23 * Math.cos((i * Math.PI) / 3), 0.23 * Math.sin((i * Math.PI) / 3)]);
+  const base = add(g, slab(roundedPolygon(hex, 0.006), H - T, 0.003), mat.travertine);
+  worldUV(base.geometry, new THREE.Vector3(X(x), 0, Z(y)));
+  b.solids.push([X(x) - it.r, Z(y) - it.r, X(x) + it.r, Z(y) + it.r]);
 }
 
-/** 皮革單椅，正面朝向 faceTo；零件以公尺、椅子本地座標表示（椅背在 +z） */
+/** 方料：從 a 到 b（群組本地公尺），斷面 w × d（w 沿本地 x），邊緣小圓角 */
+function beam(g: THREE.Object3D, a: THREE.Vector3, c: THREE.Vector3, w: number, d: number, m: THREE.Material, r = 0.004): THREE.Mesh {
+  const dir = c.clone().sub(a);
+  const me = gbox(g, w, dir.length(), d, 0, 0, 0, m, r);
+  me.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+  me.position.copy(a).add(c).multiplyScalar(0.5);
+  worldUV(me.geometry, me.position);
+  return me;
+}
+
+/** 薄片格網（x 寬 w、z 深 d、厚 t 沿 y），f(x, y, z) 把每一點搬到新位置；用來做皮革吊帶座面、椅背 */
+function sheet(w: number, d: number, t: number, nx: number, nz: number, f: (x: number, y: number, z: number) => THREE.Vector3): THREE.BufferGeometry {
+  const geo = new THREE.BoxGeometry(w, t, d, nx, 1, nz), p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const o = f(p.getX(i), p.getY(i), p.getZ(i));
+    p.setXYZ(i, o.x, o.y, o.z);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * 皮革單椅，參考 Fredericia The Spanish Chair 2226（Børge Mogensen），尺寸依官方線圖：寬 82.5、深 60、高 67、座高 33。
+ * 胡桃木實木框：扶手板 15 寬 × 2.6 厚、上緣 53.4，內緣與椅腳內面齊、往外懸出 9 cm；椅腳 6 × 3.2（寬面朝前），
+ * 前腳往前張 3°、後腳後傾 8°（腳底在扶手接點後 7 cm）；椅背柱後傾 15° 到 67（頂蓋）。
+ * 鞍皮座面包住兩側座框（前高 36.7、後 32.4，前端伸出前腳 6 cm），下方三條橫帶、扣環在中心兩側 15 cm；
+ * 椅背皮 38–65 高、約 47 寬，上緣往後垂約 6 cm，兩側以皮帶繞在椅背柱上。前腳之間一支橫撐（14–20.6）。
+ * 本地座標：x 橫向、y 向上、−z 為正面（朝 faceTo）。
+ */
 export function armchair(b: Build, it: ItemOf<'armchair'>): void {
   const { mat } = b;
   const [x, y] = it.at, [fx, fy] = it.faceTo;
-  const ch = new THREE.Group();
-  ch.position.set(X(x), 0, Z(y));
-  ch.rotation.y = Math.atan2(-(fx - x), -(fy - y));
-  b.root.add(ch);
-  const parts: [number, number, number, number, number, number, THREE.Material][] = [
-    [0.7, 0.32, 0.62, 0, 0.24, 0, mat.leather],
-    [0.7, 0.42, 0.12, 0, 0.6, 0.27, mat.leather],
-    [0.1, 0.2, 0.62, -0.32, 0.5, 0, mat.leather],
-    [0.1, 0.2, 0.62, 0.32, 0.5, 0, mat.leather],
-    [0.6, 0.08, 0.5, 0, 0.04, 0, mat.black],
-  ];
-  for (const [w, h, d, px, py, pz, m] of parts) {
-    const e = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
-    e.position.set(px, py, pz);
-    e.castShadow = e.receiveShadow = true;
-    ch.add(e);
+  const g = new THREE.Group();
+  g.position.set(X(x), 0, Z(y));
+  g.rotation.y = Math.atan2(-(fx - x), -(fy - y));
+  b.root.add(g);
+  const V = (a: number, c: number, d: number) => new THREE.Vector3(a, c, d);
+  const DEG = Math.PI / 180, ARM_T = 0.534, ARM_B = ARM_T - 0.026, LEG_X = 0.2625 + 0.03;
+
+  for (const s of [-1, 1]) {
+    // 椅腳（寬面朝前）：前腳往前張、後腳往後傾
+    beam(g, V(s * LEG_X, ARM_B, -0.235), V(s * LEG_X, 0, -0.235 - ARM_B * Math.tan(3 * DEG)), 0.06, 0.032, mat.walnut);
+    beam(g, V(s * LEG_X, ARM_B, 0.21), V(s * LEG_X, 0, 0.28), 0.06, 0.032, mat.walnut);
+    // 扶手板：內緣齊椅腳內面
+    const am = gbox(g, 0.15, ARM_T - ARM_B, 0.5, s * (0.2625 + 0.075), (ARM_T + ARM_B) / 2, -0.02, mat.walnut, 0.008);
+    worldUV(am.geometry, am.position);
+    // 椅背柱（後傾 15°）＋頂蓋
+    const p0 = V(s * 0.248, 0.3, 0.19), p1 = V(s * 0.248, 0.658, 0.19 + 0.358 * Math.tan(15 * DEG));
+    beam(g, p0, p1, 0.032, 0.032, mat.walnut);
+    const cap = beam(g, p1, p1.clone().add(V(0, 0.012, 0.012 * Math.tan(15 * DEG))), 0.04, 0.04, mat.walnut, 0.005);
+    cap.castShadow = true;
+    // 包皮座框：前端伸出前腳 6 cm，往後降 4.3 cm
+    beam(g, V(s * 0.245, 0.3445, -0.31), V(s * 0.245, 0.3015, 0.2), 0.034, 0.05, mat.saddle, 0.01);
+    // 椅背皮繞柱的皮帶與扣環（外側看得到）
+    const band = (h: number) => p0.clone().lerp(p1, (h - 0.3) / 0.358);
+    beam(g, band(0.38), band(0.44), 0.042, 0.042, mat.saddle, 0.008);
+    gbox(g, 0.006, 0.03, 0.026, s * 0.27, 0.41, band(0.41).z, mat.steel, 0.002);
   }
-  b.solids.push([X(x) - 0.35, Z(y) - 0.35, X(x) + 0.35, Z(y) + 0.35]);
+  // 前腳橫撐、座面後緣橫料
+  gbox(g, 0.525, 0.066, 0.022, 0, 0.173, -0.248, mat.walnut, 0.004);
+  gbox(g, 0.47, 0.04, 0.03, 0, 0.29, 0.2, mat.walnut, 0.004);
+
+  // 座面：兩側座框之間的鞍皮，中間下垂 2.5 cm，跟著座框前高後低
+  const seatY = (z: number) => 0.3695 + ((z + 0.31) / 0.51) * (0.3265 - 0.3695);
+  const seat = add(g, sheet(0.5, 0.51, 0.005, 20, 6, (sx, sy, sz) => {
+    const z = sz - 0.055;
+    return V(sx, seatY(z) - 0.025 * (1 - (sx / 0.25) ** 2) + sy, z);
+  }), mat.saddle);
+  worldUV(seat.geometry, seat.position);
+  // 座面下三條橫帶與扣環（離地 27–29）
+  for (const z of [-0.11, 0.05, 0.2]) {
+    add(g, sheet(0.49, 0.03, 0.004, 12, 1, (sx, sy, sz) => V(sx, 0.315 - 0.03 * (1 - (sx / 0.245) ** 2) + sy, z + sz)), mat.saddle);
+    for (const s of [-1, 1]) gbox(g, 0.035, 0.006, 0.036, s * 0.15, 0.286, z, mat.steel, 0.002);
+  }
+
+  // 椅背皮：38–65 高，沿椅背柱後傾，上緣往後垂 6 cm（下緣 2.5）；薄片的 z 當高度、厚度轉成前後
+  const backZ = (h: number) => 0.19 + (h - 0.3) * Math.tan(15 * DEG);
+  const backL = add(g, sheet(0.47, 0.27, 0.005, 16, 8, (sx, sy, sz) => {
+    const v = (sz + 0.135) / 0.27, h = 0.38 + 0.27 * v, bow = (0.025 + 0.035 * v) * (1 - (sx / 0.235) ** 2);
+    return V(sx, h, backZ(h) + bow - sy);
+  }), mat.saddle);
+  worldUV(backL.geometry, backL.position);
+
+  b.solids.push([X(x) - 0.38, Z(y) - 0.38, X(x) + 0.38, Z(y) + 0.38]);
 }
 
 /** 吧台椅 */

@@ -48,32 +48,195 @@ export function eggRing(w: number, L: number, n = 48, nBack = 5, nFront = 2.4, t
  * capStart／capEnd 在第一圈／最後一圈加平面封口（第一圈朝下、最後一圈朝上）。
  */
 export function loft(sections: readonly Section[], capStart = false, capEnd = false): THREE.BufferGeometry {
-  const N = sections[0].ring.length, pos: number[] = [], idx: number[] = [];
-  for (const s of sections) for (const p of s.ring) pos.push(p.x, s.y, p.y);
-  for (let i = 0; i + 1 < sections.length; i++) {
+  return skin(sections.map((s) => s.ring.map((p) => new THREE.Vector3(p.x, s.y, p.y))), { capStart, capEnd });
+}
+
+export interface SkinOpt {
+  /** 每圈頭尾相接（預設 true）；false 時最後一點要自己重複第一點（uv 接縫用） */
+  closed?: boolean;
+  capStart?: boolean;
+  capEnd?: boolean;
+  /** 每個點的 uv（公尺）；封口中心點取該圈平均 */
+  uvs?: readonly (readonly THREE.Vector2[])[];
+}
+
+/**
+ * loft 的一般化：各圈是任意位置的 3D 點（點數相同、方向一致）。
+ * 法線方向 = 前進方向 × 圈的走向（loft 的水平圈逆時針往上走時朝外）。
+ */
+export function skin(rings: readonly (readonly THREE.Vector3[])[], o: SkinOpt = {}): THREE.BufferGeometry {
+  const N = rings[0].length, closed = o.closed ?? true, pos: number[] = [], uv: number[] = [], idx: number[] = [];
+  rings.forEach((r, i) => r.forEach((p, j) => {
+    pos.push(p.x, p.y, p.z);
+    if (o.uvs) uv.push(o.uvs[i][j].x, o.uvs[i][j].y);
+  }));
+  const J = closed ? N : N - 1;
+  for (let i = 0; i + 1 < rings.length; i++) {
     const a = i * N, c = (i + 1) * N;
-    for (let j = 0; j < N; j++) {
+    for (let j = 0; j < J; j++) {
       const j1 = (j + 1) % N;
       idx.push(a + j, c + j1, a + j1, a + j, c + j, c + j1);
     }
   }
-  const fan = (s: number, up: boolean) => {
-    const ring = sections[s].ring, ci = pos.length / 3, o = s * N;
-    const cen = ring.reduce((m, p) => m.add(p), new THREE.Vector2()).divideScalar(N);
-    pos.push(cen.x, sections[s].y, cen.y);
-    for (let j = 0; j < N; j++) {
+  const fan = (s: number, end: boolean) => {
+    const ring = rings[s], ci = pos.length / 3, o2 = s * N, n = closed ? N : N - 1;
+    const cen = ring.slice(0, n).reduce((m, p) => m.add(p), new THREE.Vector3()).divideScalar(n);
+    pos.push(cen.x, cen.y, cen.z);
+    if (o.uvs) {
+      const cu = o.uvs[s].slice(0, n).reduce((m, p) => m.add(p), new THREE.Vector2()).divideScalar(n);
+      uv.push(cu.x, cu.y);
+    }
+    for (let j = 0; j < J; j++) {
       const j1 = (j + 1) % N;
-      if (up) idx.push(ci, o + j1, o + j);
-      else idx.push(ci, o + j, o + j1);
+      if (end) idx.push(ci, o2 + j1, o2 + j);
+      else idx.push(ci, o2 + j, o2 + j1);
     }
   };
-  if (capStart) fan(0, false);
-  if (capEnd) fan(sections.length - 1, true);
+  if (o.capStart) fan(0, false);
+  if (o.capEnd) fan(rings.length - 1, true);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  if (o.uvs) g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx);
   g.computeVertexNormals();
   return g;
+}
+
+/** 把同一位置、分屬兩邊的頂點（uv 接縫）法線取平均，讓接縫處光影連續 */
+function weldNormals(g: THREE.BufferGeometry, pairs: readonly [number, number][]): void {
+  const n = g.attributes.normal as THREE.BufferAttribute, a = new THREE.Vector3(), c = new THREE.Vector3();
+  for (const [i, j] of pairs) {
+    a.fromBufferAttribute(n, i).add(c.fromBufferAttribute(n, j)).normalize();
+    n.setXYZ(i, a.x, a.y, a.z);
+    n.setXYZ(j, a.x, a.y, a.z);
+  }
+  n.needsUpdate = true;
+}
+
+/**
+ * 軟墊（沙發坐墊、椅背墊）：平面為圓角矩形（寬 w 沿 x、深 d 沿 z、平面圓角 r），
+ * 四周斷面是半徑 e 的圓弧，頂面中間鼓起 crown、底面鼓 crownBottom；邊緣下緣 y = 0、上緣 y = t。
+ * 由底面中心一圈圈往外、沿圓弧往上、再往頂面中心收。uv 以公尺計：頂底面 (x, z)，側面（周長, 高），兩者在縫邊分開。
+ */
+export function cushion(w: number, d: number, t: number, o: { r?: number; e?: number; crown?: number; crownBottom?: number } = {}): THREE.BufferGeometry {
+  const e = Math.min(o.e ?? 0.04, t / 2), r = o.r ?? 0.03, crown = o.crown ?? 0, cb = o.crownBottom ?? 0;
+  const a = w / 2, b = d / 2, m = Math.min(a, b) - 0.003, F = 6, E = 6;
+  const dome = (s: number) => 1 - (1 - s) ** 2;
+  // [內縮量, 高, 是否側面]
+  const prof: [number, number, boolean][] = [];
+  for (let i = F; i >= 0; i--) prof.push([e + ((m - e) * i) / F, -cb * dome(i / F), false]);
+  for (let i = 0; i <= E; i++) {
+    const th = (i / E - 1) * (Math.PI / 2);
+    prof.push([e * (1 - Math.cos(th)), e + e * Math.sin(th), true]);
+  }
+  for (let i = t - 2 * e > 1e-4 ? 0 : 1; i <= E; i++) {
+    const th = (i / E) * (Math.PI / 2);
+    prof.push([e * (1 - Math.cos(th)), t - e + e * Math.sin(th), true]);
+  }
+  for (let i = 0; i <= F; i++) prof.push([e + ((m - e) * i) / F, t + crown * dome(i / F), false]);
+
+  // 內縮後的圓角：外圈沿用 r，往內逐漸變圓，頂面等高線不會在對角線上折出稜線
+  const ringAt = (k: number) => {
+    const ring = roundRect(a - k, b - k, Math.max(r - k, 0.5 * (k - e), 0.002), 0, 0, 6, 4);
+    ring.push(ring[0].clone());
+    return ring;
+  };
+  const outer = ringAt(0), per = [0];
+  for (let j = 1; j < outer.length; j++) per.push(per[j - 1] + outer[j].distanceTo(outer[j - 1]));
+  const rings: THREE.Vector3[][] = [], uvs: THREE.Vector2[][] = [];
+  for (const [k, y, side] of prof) {
+    const ring = ringAt(k);
+    rings.push(ring.map((p) => new THREE.Vector3(p.x, y, p.y)));
+    uvs.push(ring.map((p, j) => (side ? new THREE.Vector2(per[j], y) : new THREE.Vector2(p.x, -p.y))));
+  }
+  const g = skin(rings, { closed: false, capStart: true, capEnd: true, uvs });
+  // 接縫：每圈頭尾重複點、底面／側面與側面／頂面交界的重複圈
+  const N = outer.length, pairs: [number, number][] = [];
+  for (let i = 0; i < prof.length; i++) pairs.push([i * N, i * N + N - 1]);
+  for (let i = 0; i + 1 < prof.length; i++) {
+    if (prof[i][2] !== prof[i + 1][2]) for (let j = 0; j < N; j++) pairs.push([i * N + j, (i + 1) * N + j]);
+  }
+  weldNormals(g, pairs);
+  return g;
+}
+
+/**
+ * 抱枕：w × h 的方形布套塞飽後的形狀，平放在 xz 平面、縫邊在 y = 0，兩面各鼓起 t/2；
+ * 四邊中段被填充往內拉（pinch），四角尖出。頂點往縫邊集中，鼓起的邊緣才圓順。uv 為 (x, z) 公尺。
+ */
+export function pillow(w: number, h: number, t: number, pinch = 0.07, n = 20): THREE.BufferGeometry {
+  const a = w / 2, b = h / 2, pos: number[] = [], uv: number[] = [], idx: number[] = [];
+  const s = (i: number) => Math.sin(((2 * i) / n - 1) * (Math.PI / 2));
+  for (const side of [1, -1]) {
+    const o = pos.length / 3;
+    for (let i = 0; i <= n; i++) for (let j = 0; j <= n; j++) {
+      const u = s(i), v = s(j);
+      const x = a * u * (1 - pinch * (1 - v * v)), z = b * v * (1 - pinch * (1 - u * u));
+      const f = Math.sqrt(Math.max(0, (1 - Math.abs(u) ** 2.5) * (1 - Math.abs(v) ** 2.5)));
+      pos.push(x, side * (t / 2) * f, z);
+      uv.push(x, -z);
+    }
+    const V = (i: number, j: number) => o + i * (n + 1) + j;
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      if (side > 0) idx.push(V(i, j), V(i, j + 1), V(i + 1, j), V(i + 1, j), V(i, j + 1), V(i + 1, j + 1));
+      else idx.push(V(i, j), V(i + 1, j), V(i, j + 1), V(i + 1, j), V(i + 1, j + 1), V(i, j + 1));
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * 披掛的布（摺好的毯子、床尾巾）：沿垂直面上的路徑 path（[水平, 高]，公尺）掃出寬 w（沿 z）、厚 th 的布條，
+ * 兩側長邊是摺線（半圓）。ripple(s, z) 為沿法線的起伏（s 為路徑長度），做下垂處的波浪摺。uv 為（路徑長, z）公尺。
+ */
+export function drape(path: readonly [number, number][], w: number, th: number, ripple: (s: number, z: number) => number = () => 0, nz = 24): THREE.BufferGeometry {
+  const r = th / 2, e = w / 2 - r, K = 4;
+  // 斷面一圈：[z, 沿法線的位移]；上面從 +z 走到 −z、繞過 −z 摺線、下面走回來、繞過 +z 摺線（法線朝外）
+  const sec: [number, number][] = [];
+  for (let k = 0; k <= nz; k++) sec.push([e - (2 * e * k) / nz, r]);
+  for (let k = 1; k < K; k++) { const a = Math.PI / 2 + (k / K) * Math.PI; sec.push([-e + r * Math.cos(a), r * Math.sin(a)]); }
+  for (let k = 0; k <= nz; k++) sec.push([-e + (2 * e * k) / nz, -r]);
+  for (let k = 1; k < K; k++) { const a = -Math.PI / 2 + (k / K) * Math.PI; sec.push([e + r * Math.cos(a), r * Math.sin(a)]); }
+  const rings: THREE.Vector3[][] = [], uvs: THREE.Vector2[][] = [];
+  let s = 0;
+  path.forEach(([x, y], i) => {
+    if (i > 0) s += Math.hypot(x - path[i - 1][0], y - path[i - 1][1]);
+    const [x0, y0] = path[Math.max(0, i - 1)], [x1, y1] = path[Math.min(path.length - 1, i + 1)];
+    const l = Math.hypot(x1 - x0, y1 - y0), nx = -(y1 - y0) / l, ny = (x1 - x0) / l;
+    rings.push(sec.map(([z, o]) => {
+      const off = ripple(s, z) + o;
+      return new THREE.Vector3(x + nx * off, y + ny * off, z);
+    }));
+    uvs.push(sec.map(([z]) => new THREE.Vector2(s, z)));
+  });
+  return skin(rings, { capStart: true, capEnd: true, uvs });
+}
+
+/** 多邊形每個角倒圓（半徑 r，凹角也可），回傳 Shape；點為 (x, z) */
+export function roundedPolygon(pts: readonly [number, number][], r: number, seg = 6): THREE.Shape {
+  const out: THREE.Vector2[] = [], n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const p = new THREE.Vector2(...pts[i]), a = new THREE.Vector2(...pts[(i + n - 1) % n]).sub(p).normalize(),
+      c = new THREE.Vector2(...pts[(i + 1) % n]).sub(p).normalize();
+    const half = Math.acos(THREE.MathUtils.clamp(a.dot(c), -1, 1)) / 2, dist = r / Math.tan(half);
+    const p0 = p.clone().addScaledVector(a, dist), p1 = p.clone().addScaledVector(c, dist);
+    const bis = a.clone().add(c).normalize(), cen = p.clone().addScaledVector(bis, r / Math.sin(half));
+    const t0 = Math.atan2(p0.y - cen.y, p0.x - cen.x);
+    let t1 = Math.atan2(p1.y - cen.y, p1.x - cen.x), dt = t1 - t0;
+    if (dt > Math.PI) dt -= 2 * Math.PI;
+    if (dt < -Math.PI) dt += 2 * Math.PI;
+    t1 = t0 + dt;
+    for (let k = 0; k <= seg; k++) {
+      const t = t0 + ((t1 - t0) * k) / seg;
+      out.push(new THREE.Vector2(cen.x + r * Math.cos(t), cen.y + r * Math.sin(t)));
+    }
+  }
+  return new THREE.Shape(out);
 }
 
 /** 一圈點 → THREE.Shape（或挖孔用的 Path） */

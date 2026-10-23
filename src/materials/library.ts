@@ -16,7 +16,6 @@ export const TINTS = {
   duvet: [1.228, 1.193, 1.115],
   throw: [1.068, 0.927, 0.919],
   fabric: [0.472, 0.401, 0.347],
-  fabricL: [0.604, 0.527, 0.454],
   headboard: [0.21, 0.151, 0.121],
   leather: [0.784, 0.855, 0.943],
   ochre: [0.976, 0.562, 0.228],
@@ -138,6 +137,15 @@ export function createMaterials(tex: TextureLibrary) {
     if (tint) m.color.setRGB(tint[0], tint[1], tint[2]);
     return m;
   };
+  /** 布料加絨面光澤（sheen）：斜看時邊緣泛白，沙發、抱枕才不像塑膠 */
+  const cloth = (name: TexName, tint: RGB, sheenColor: number) => {
+    const m = new THREE.MeshPhysicalMaterial({
+      map: tex.get(name, 'base'), normalMap: tex.get(name, 'nrm'), roughnessMap: tex.get(name, 'orm'), aoMap: tex.get(name, 'orm'),
+      roughness: 1, metalness: 0, sheen: 1, sheenRoughness: 0.7, sheenColor,
+    });
+    m.color.setRGB(tint[0], tint[1], tint[2]);
+    return m;
+  };
   const M = (o: THREE.MeshStandardMaterialParameters) =>
     new THREE.MeshStandardMaterial({ roughness: 0.8, metalness: 0, ...o });
   const terryN = terryNormalMap(), rollEnd = rollEndTexture(), glassN = glassNormal(GLASS_SLOPE);
@@ -160,16 +168,25 @@ export function createMaterials(tex: TextureLibrary) {
     blackSatin: M({ color: 0x1f1f1f, roughness: 0.35, metalness: 0 }),
     stone: PBR('stoneDarkSlab', TINTS.stone),
     stoneWarm: PBR('stoneLightSlab', TINTS.stoneWarm),
+    // 洞石（暖白、霧面）：茶几
+    travertine: PBR('stoneLightSlab', [1.04, 0.99, 0.9]),
     tileDark: PBR('stoneDarkTile'),
     tileLight: PBR('stoneLightTile'),
     linen: PBR('fabric', TINTS.linen),
     duvet: PBR('fabric', TINTS.duvet),
     throw: PBR('rug', TINTS.throw),
     fabric: PBR('fabric', TINTS.fabric),
-    fabricL: PBR('fabric', TINTS.fabricL),
+    // 沙發：燕麥灰褐羊毛混紡（座框、坐墊、椅背墊同一塊布）；抱枕：奶油色、赭黃、陶土紅
+    sofa: cloth('fabric', TINTS.fabric, 0x6f655b),
+    pillowCream: cloth('fabric', [1.5, 1.45, 1.3], 0xb9b2a4),
     headboard: PBR('fabric', TINTS.headboard),
     leather: PBR('leather', TINTS.leather),
-    ochre: PBR('fabric', TINTS.ochre),
+    // 植鞣鞍皮（深咖啡）：西班牙椅
+    saddle: PBR('leather', [0.64, 0.67, 0.66]),
+    ochre: cloth('fabric', TINTS.ochre, 0x9c6a3c),
+    pillowRust: cloth('fabric', [0.78, 0.26, 0.16], 0x8a5040),
+    // 刷毛羊毛毯（HAY Mono，深咖啡灰）
+    wool: cloth('fabric', [0.26, 0.21, 0.18], 0x6a5d55),
     rug: PBR('rug', TINTS.rug),
     rug2: PBR('rug', TINTS.rug2),
     chair: PBR('fabric', TINTS.chair),
@@ -186,6 +203,8 @@ export function createMaterials(tex: TextureLibrary) {
       normalMap: glassN }),
     // 電視（關機）：OLED 光面，抗反射膜約 1% 反射
     tv: new THREE.MeshPhysicalMaterial({ color: 0x0e0e0e, roughness: 0.05, ior: 1.22 }),
+    // 電視機身與窄邊框（霧黑）
+    tvBody: M({ color: 0x161617, roughness: 0.5 }),
     // 植物葉片（琴葉榕、橡膠樹一類的蠟質葉）
     plant: M({ color: 0x3a4a2e, roughness: 0.45, side: THREE.DoubleSide }),
     // 霧面施釉陶盆（炭灰）
