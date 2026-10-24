@@ -122,8 +122,7 @@ function applyLight(): void {
   }
   dock.showNight(night);
   // 窗簾展示狀態跟著日夜切換
-  const p = night ? CURTAIN_PRESETS.night : CURTAIN_PRESETS.day;
-  for (const c of house.build.curtains) { c.set('sheer', p.sheer); c.set('main', p.main); }
+  for (const c of house.build.curtains) c.set(night ? CURTAIN_PRESETS.night : CURTAIN_PRESETS.day);
 }
 function setNight(v: boolean): void {
   night = v;
@@ -190,6 +189,6 @@ requestAnimationFrame(loop);
 /* ---------- 除錯／比對介面（與參考版 window.__dbg 相同） ---------- */
 Object.assign(window, {
   __dbg: { setMode, walk: walk.state, applyLight, setNight, setCut, camera, orbit, setDoor: (id: string, t: number) => house.doors.set(id, t),
-    setCurtain: (id: string, layer: 'sheer' | 'main', t: number) => house.build.curtains.find((c) => c.id === id)?.set(layer, t) },
+    setCurtain: (id: string, t: number) => house.build.curtains.find((c) => c.id === id)?.set(t) },
   __app: { THREE, scene, renderer, camera, build: house.build, doors: house.doors, probes, view, lights, lightMask, ready: textures.ready },
 });

@@ -3,21 +3,29 @@ import { X, Z } from '../core/units';
 import type { Side } from '../data/layout';
 import type { ItemOf } from '../data/query';
 import { tolomeoArm } from './fixtures';
-import { FACING_YAW, add, gbox, leanOn, rbox, worldUV, type Build } from './prims';
-import { cushion, pillow, samples, thickGrid, type PillowOpt } from './shapes';
+import { FACING_YAW, add, gbox, rbox, worldUV, type Build } from './prims';
+import { cushion, pillow, samples, thickGrid } from './shapes';
 
 /*
  * 臥室（2026-10 依調查重做；公尺）：
  *  床    歐規床墊 180 × 200（主臥）／160 × 200（客房），厚 28／25；布面床座 22 高放在內縮的深色踢腳上（IKEA LYNGÖR、Smilow 懸浮床架）
  *  寢具  被子 240 × 260／220 × 240，中間鬆 7、邊緣滾邊 2，兩側垂下約 30，床頭端往回折約 1/4；
- *        歐式方枕 65 × 65（加 5 cm 平邊、鼓 18）×2 立靠、枕頭 50 × 75（鼓 14）×2、腰枕 30 × 50；床尾巾 55 寬、0.8 厚
- *        （IKEA 枕套尺寸、wald 床尾巾、飯店與樣品屋鋪法）
+ *        每側兩顆睡枕平疊（見 PILLOW；2026-10-25 依使用者決定拿掉歐式方枕與腰枕）；床尾巾 55 寬、0.8 厚
+ *        （wald 床尾巾、飯店鋪法）
  *  床頭櫃 Article Lenia／EQ3 Marcel：抽屜面板退在櫃框內 3.5 cm，上緣一道木唇當取手
  *  壁燈  Artemide Tolomeo Micro Wall（黑 A010930）：圓形拋光壁座 Ø9.8、下臂約 30、上臂約 32（肘後尾端 4.5）、管徑 1.1、
  *        燈頭 Ø10.8，彈簧藏在管內、不鏽鋼拉線沿管外
  */
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
+/**
+ * 睡枕（台灣常見 45 × 75 信封枕套，枕芯塞飽後外形縮約 5 cm → 41 × 69，鼓 12–15）：w、h、t 為枕芯外形；
+ * 橫切面是透鏡形（中間最厚、往兩長邊變薄，exZ 2），縱向中段長而平、兩端圓（ex 3.5）；envelope 為開口端的空布；
+ * back 為底面被床墊壓平的倍率；z 為下面那顆的中心離床頭，上面那顆往床頭退 stackBack、後緣翹 stackTilt（度）、陷進下面那顆 nest。
+ * 參考：飯店鋪床 SOP（每側兩顆、開口朝床中間）、DOWNLITE（塞飽縮 5–7.5 cm）、無側邊的刀邊枕是透鏡形斷面
+ */
+const PILLOW = { w: 0.69, h: 0.41, t: 0.15, ex: 3.5, exZ: 2, envelope: 0.05, back: 0.6, crease: 0.002, pinch: 0.05, sink: 0.008, z: 0.235, stackBack: 0.03, stackTilt: 8, nest: 0.02 };
+
 /** 朝向 → 世界平面方向（x, 0, z） */
 const FACING_DIR: Record<Side, [number, number, number]> = { N: [0, 0, -1], S: [0, 0, 1], E: [1, 0, 0], W: [-1, 0, 0] };
 
@@ -90,16 +98,22 @@ export function bed(b: Build, it: ItemOf<'bed'>): void {
   add(g, thickGrid(samples(-DW / 2, DW / 2, 0.05, [-A, A], 0.15, 0.015), samples(RZ - RL / 2, RZ + RL / 2, 0.05), runner, () => 0.008), mat.wool);
 
   /* ---------- 枕頭 ---------- */
-  const deg = Math.PI / 180, S = V(0, 0, 1);
+  // 飯店式：每側兩顆睡枕平疊（PILLOW），信封口朝床中間；下面那顆平躺、底面被床墊壓平，
+  // 上面那顆往床頭退一點、後緣靠床頭略翹
+  const P = PILLOW, deg = Math.PI / 180;
   let seed = x1;
-  const P = (w: number, h: number, t: number, m: THREE.Material, x: number, y: number, z: number, tilt: number, roll: number, o: PillowOpt = {}) =>
-    leanOn(g, pillow(w, h, t, { seed: ++seed, ...o }), m, V(x, y, z), S, h, tilt * deg, roll * deg);
-  // 歐式方枕立靠床頭板，前面兩個枕頭斜靠，最前面一個腰枕
   for (const s of [-1, 1]) {
-    P(0.65, 0.65, 0.18, mat.bedOat, s * 0.38, top + 0.04, 0.1, 12, s * 1.5, { flange: 0.05, crease: 0.0025, settle: 0.1, back: 0.85 });
-    P(0.75, 0.5, 0.14, mat.linen, s * 0.385, top - 0.005, 0.3, 28, -s * 2, { crease: 0.002, settle: 0.06 });
+    const x = s * (W / 4 + P.envelope / 2);
+    const lay = (y: number, z: number, tilt: number, yaw: number) => {
+      const geo = pillow(P.w, P.h, P.t, { seed: ++seed, ex: P.ex, exZ: P.exZ, envelope: P.envelope, back: P.back, crease: P.crease, pinch: P.pinch });
+      // 空布在幾何的 +x 端：右側那組轉 180° 讓開口朝床中間
+      geo.rotateY((s > 0 ? Math.PI : 0) + yaw * deg).rotateX(tilt * deg);
+      add(g, geo, mat.linen, x, y, z);
+    };
+    const lower = (P.t / 2) * P.back, upper = (P.t / 2) * (1 + (1 - P.back) * 0.5);
+    lay(top + lower - P.sink, P.z, 0, s * 1.5);
+    lay(top + lower - P.sink + upper + lower - P.nest, P.z - P.stackBack, P.stackTilt, -s * 2);
   }
-  P(0.5, 0.3, 0.11, mat.ochre, 0, top + 0.05, 0.5, 18, 1, { crease: 0.003, settle: 0.1 });
 
   b.solids.push([X(x1), Z(y1), X(x2), Z(y2)]);
 }

@@ -164,8 +164,8 @@ export const windowSpecs: readonly WindowSpec[] = [
   { opening: 'win-living', type: 'fixed', sill: 'stone', curtainBox: { from: 264, to: 470 } },
 ];
 
-/** 窗簾盒：雙層蛇形簾需要 25 cm 深；紗簾軌道離牆 8 cm、布簾軌道 17 cm；盒內前緣有往下照布簾的洗簾燈（離牆 21 cm） */
-export const CURTAIN_BOX = { depth: 25, h0: 2.6, sheerTrack: 7, mainTrack: 18, washLight: 21 };
+/** 窗簾盒 25 cm 深（原為雙層設計，2026-10-25 拿掉紗簾）；布簾軌道離牆 17 cm；盒內前緣有往下照布簾的洗簾燈（離牆 21 cm） */
+export const CURTAIN_BOX = { depth: 25, h0: 2.6, track: 17, washLight: 21 };
 
 /* ---------- 收邊 ---------- */
 
@@ -274,7 +274,7 @@ export type Item =
   | { id: string; type: 'shelf'; rect: Rect; h: number; shelves: number; back: Side; seed: number }
   // 地毯；h 為厚度（預設 1.2 cm），inner 為淺色內層
   | { id: string; type: 'rug'; rect: Rect; material: RugMaterial; h?: number; inner?: Rect }
-  // 雙層蛇形簾（紗簾＋布簾）掛在窗簾盒內；sides 為收在哪一側，bottom 為下緣高度（預設落地，離地 1 cm）
+  // 蛇形布簾掛在窗簾盒內；sides 為收在哪一側，bottom 為下緣高度（預設落地，離地 1 cm）
   // span 為窗簾實際使用的軌道範圍（預設為整個窗簾盒）
   | { id: string; type: 'curtains'; label: string; window: string; sides: 'both' | 'start' | 'end'; bottom?: number; span?: readonly [number, number] }
   // 嵌入式浴缸：rect 為缸體外緣，surround 為石材包覆（補到牆面），h 為缸緣高；foot 為腳端（排水、出水口）方向
@@ -524,7 +524,7 @@ export const items: readonly Item[] = [
   ] },
   { id: 'display-vase', type: 'vase', at: [980, 945], h: 0.75, seed: 5 },
   // 琴葉榕（標準型）盆 Ø40 × 40
-  { id: 'mbed-door-plant', type: 'plant', at: [510, 455], kind: 'fiddleLeaf', seed: 3 },
+  { id: 'mbed-door-plant', type: 'plant', at: [542, 455], kind: 'fiddleLeaf', seed: 3 },
   // 沙發後（公衛北牆）兩幅 50 × 70，中心高 1.5，間距 6 cm
   { id: 'art-sofa-1', type: 'art', at: [688.5, 884.5], facing: 'N', h: 1.5, print: 'arches' },
   { id: 'art-sofa-2', type: 'art', at: [746.5, 884.5], facing: 'N', h: 1.5, print: 'sun' },

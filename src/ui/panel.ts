@@ -18,9 +18,6 @@ export function createPanel(doors: Doors, curtains: readonly CurtainCtl[]): GUI 
   f.close();
 
   const c = gui.addFolder('窗簾（0 收起 ～ 1 拉上；切換日夜時套用預設）');
-  for (const ct of curtains) {
-    c.add(ct, 'sheer', 0, 1, 0.01).name(`${ct.label}・紗簾`).onChange((v: number) => ct.set('sheer', v)).listen();
-    c.add(ct, 'main', 0, 1, 0.01).name(`${ct.label}・布簾`).onChange((v: number) => ct.set('main', v)).listen();
-  }
+  for (const ct of curtains) c.add(ct, 't', 0, 1, 0.01).name(ct.label).onChange((v: number) => ct.set(v)).listen();
   return gui;
 }

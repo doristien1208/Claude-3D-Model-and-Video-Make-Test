@@ -159,7 +159,7 @@ function windowUnit(b: Build, spec: WindowSpec, ceiling: THREE.Group): void {
     b.box(rectAlong(f.hor, s, e, k(DEPTH), t), top - 0.005, top, mat.tileLight, o);
   }
 
-  /* 窗簾盒：做滿整面牆的面板＋兩端封板＋紗簾與布簾兩條軌道，跟天花板同一組（俯瞰時隱藏） */
+  /* 窗簾盒：做滿整面牆的面板＋兩端封板＋布簾軌道，跟天花板同一組（俯瞰時隱藏） */
   if (spec.curtainBox) {
     const { from, to } = spec.curtainBox, D = CURTAIN_BOX.depth, hb = CURTAIN_BOX.h0;
     const R = (a0: number, a1: number, c0: number, c1: number) => rectAlong(f.hor, a0, a1, ci + σ * c0, ci + σ * c1);
@@ -167,8 +167,7 @@ function windowUnit(b: Build, spec: WindowSpec, ceiling: THREE.Group): void {
       b.box(R(from, to, D - 2, D), hb, H, mat.ceil),
       b.box(R(from, from + 2, 0, D), hb, H, mat.ceil),
       b.box(R(to - 2, to, 0, D), hb, H, mat.ceil),
-      b.box(R(from + 2, to - 2, CURTAIN_BOX.sheerTrack - 1, CURTAIN_BOX.sheerTrack + 1), 2.76, 2.78, mat.alu),
-      b.box(R(from + 2, to - 2, CURTAIN_BOX.mainTrack - 1, CURTAIN_BOX.mainTrack + 1), 2.76, 2.78, mat.alu),
+      b.box(R(from + 2, to - 2, CURTAIN_BOX.track - 1, CURTAIN_BOX.track + 1), 2.76, 2.78, mat.alu),
     ]) ceiling.add(me);
 
     // 洗簾燈：盒內前緣的燈條往下照布簾（Panasonic：燈具離牆 200–230 mm）。夜間才開，用面光源讓褶子有光影

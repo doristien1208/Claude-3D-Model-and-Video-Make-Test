@@ -126,6 +126,18 @@ export class LightMask {
         group,
       });
     }
+    // 同一光區、中間沒有牆而留了縫的兩區（客廳到 884.5、玄關從 905 開始，中間是開放的地板）補一塊，
+    // 不然那條地板不屬於任何光區，哪一區的燈都照不到，地上會出現一條暗帶
+    const GAP = 0.3, n = this.boxes.length;
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      const a = this.boxes[i], c = this.boxes[j];
+      if (i === j || a.group !== c.group) continue;
+      const x0 = Math.max(a.min.x, c.min.x), x1 = Math.min(a.max.x, c.max.x), z0 = Math.max(a.min.z, c.min.z), z1 = Math.min(a.max.z, c.max.z);
+      if (x1 > x0 && c.min.z > a.max.z && c.min.z - a.max.z < GAP)
+        this.boxes.push({ min: new THREE.Vector3(x0, a.min.y, a.max.z), max: new THREE.Vector3(x1, a.max.y, c.min.z), group: a.group });
+      if (z1 > z0 && c.min.x > a.max.x && c.min.x - a.max.x < GAP)
+        this.boxes.push({ min: new THREE.Vector3(a.max.x, a.min.y, z0), max: new THREE.Vector3(c.min.x, a.max.y, z1), group: a.group });
+    }
     this.uniforms.lmBoxMin.value = this.boxes.map((b) => b.min);
     this.uniforms.lmBoxMax.value = this.boxes.map((b) => b.max);
     this.uniforms.lmBoxGroup.value = this.boxes.map((b) => b.group);

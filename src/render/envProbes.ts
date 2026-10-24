@@ -54,13 +54,9 @@ function patch(m: THREE.MeshStandardMaterial, z: Zone, extra?: ShaderPatch): voi
       '#include <envmap_physical_pars_fragment>',
       BP_PARS + chunk.replace(RADIANCE_LINE, `${RADIANCE_LINE}\n\t\t\treflectVec = bpCorrect( reflectVec );`),
     );
-    // 材質要求斜看時較不透明（紗簾，見 materials/library.ts）
-    const ga = m.userData.grazingAlpha as number | undefined;
-    if (ga) shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
-	diffuseColor.a = min( 1.0, diffuseColor.a * ( 1.0 + ${ga.toFixed(3)} * pow( 1.0 - abs( dot( normal, normalize( vViewPosition ) ) ), 3.0 ) ) );`);
     extra?.(shader);
   };
-  m.customProgramCacheKey = () => (extra ? 'bpcem+x' : 'bpcem') + (m.userData.grazingAlpha ? `+ga${m.userData.grazingAlpha}` : '');
+  m.customProgramCacheKey = () => (extra ? 'bpcem+x' : 'bpcem');
 }
 
 export class EnvProbes {

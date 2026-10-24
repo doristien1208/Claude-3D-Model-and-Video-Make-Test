@@ -231,7 +231,8 @@ export function createMaterials(tex: TextureLibrary) {
     travertine: PBR('stoneLightSlab', [1.04, 0.99, 0.9]),
     tileDark: PBR('stoneDarkTile'),
     tileLight: PBR('stoneLightTile'),
-    linen: PBR('fabric', TINTS.linen),
+    // 白色 percale 棉（床包、枕套）：絨面光澤較弱、鏡面反射調低
+    linen: cloth('fabric', TINTS.linen, { sheen: 0.4, sheenRoughness: 0.6, spec: 0.4 }),
     duvet: PBR('fabric', TINTS.duvet),
     // 沙發：燕麥灰褐羊毛 bouclé（座框、坐墊、椅背墊同一塊布）；抱枕：奶油色 bouclé、赭黃與陶土紅粗麻
     // （Poly Haven 貼圖已轉成線性平均 0.45 的中性灰，倍率換算自原本 fabric 貼圖上的顏色）
@@ -239,8 +240,6 @@ export function createMaterials(tex: TextureLibrary) {
     pillowCream: cloth('boucle', [1.615, 1.414, 1.113]),
     // 床頭板、床座：深咖啡羊毛 bouclé（倍率換算自原本 fabric 貼圖上的顏色）
     headboard: cloth('boucle', [0.226, 0.147, 0.104]),
-    // 歐式方枕：燕麥色粗麻
-    bedOat: cloth('roughLinen', [1.3, 1.09, 0.79], LINEN),
     // 植鞣鞍皮（深咖啡）：西班牙椅
     saddle: PBR('leather', [0.64, 0.67, 0.66]),
     ochre: cloth('roughLinen', [1.05, 0.548, 0.195], LINEN),
@@ -309,11 +308,7 @@ export function createMaterials(tex: TextureLibrary) {
     fridgeGlass: new THREE.MeshPhysicalMaterial({ color: 0x232526, roughness: 0.12, ior: 1.5 }),
     // 深古銅陽極鋁（Tiger Drylac Dark Bronze #4E4542；陽極處理以金屬建模）
     alu: M({ color: 0x4e4542, roughness: 0.3, metalness: 1 }),
-    // 窗簾（雙面）：象牙白聚酯紗（約 50 g/m²，三角斷面絲有細微閃光）、燕麥色麻感布簾（200–300 g/m²）。
-    // 紗：粗糙 0.7、白色絨面光澤較集中、不透明度 0.4，斜看時較密（grazingAlpha，見 envProbes）；布：絨面光澤 √底色、鏡面反射調低
-    sheer: new THREE.MeshPhysicalMaterial({ map: tex.get('fabric', 'base'), normalMap: tex.get('fabric', 'nrm'), color: new THREE.Color(1.55, 1.5, 1.38),
-      roughness: 0.7, sheen: 0.45, sheenRoughness: 0.4, sheenColor: new THREE.Color(0.85, 0.85, 0.85), specularIntensity: 0.5,
-      transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false, vertexColors: true }),
+    // 布簾（雙面）：燕麥色麻感布（200–300 g/m²），絨面光澤 √底色、鏡面反射調低
     drape: new THREE.MeshPhysicalMaterial({ map: tex.get('fabric', 'base'), normalMap: tex.get('fabric', 'nrm'), roughnessMap: tex.get('fabric', 'orm'),
       aoMap: tex.get('fabric', 'orm'), color: new THREE.Color(0.92, 0.8, 0.64), roughness: 1, sheen: 0.8, sheenRoughness: 0.65,
       sheenColor: new THREE.Color(0.666, 0.59, 0.496), specularIntensity: 0.35, side: THREE.DoubleSide, vertexColors: true }),
@@ -344,8 +339,6 @@ export function createMaterials(tex: TextureLibrary) {
     bookCover: M({ color: 0xffffff, roughness: 0.7 }),
   };
   for (const [k, m] of Object.entries(mat)) m.name = k;
-  // 紗簾斜看時較密（真的紗在掠射角幾乎不透）：不透明度 × (1 + k·(1 − |N·V|)³)，由 envProbes 的著色器修改套用
-  mat.sheer.userData.grazingAlpha = 1.4;
 
   return { mat };
 }

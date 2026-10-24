@@ -172,13 +172,16 @@ function rand(seed: number): () => number {
 export interface PillowOpt {
   /** 四邊中段被填充往內拉的比例（半寬的倍數；角落不動） */
   pinch?: number;
-  /** 厚度輪廓 (1 − |s|^ex)^m：中間平、往縫邊變陡 */
+  /** 厚度輪廓 (1 − |s|^ex)^m：中間平、往縫邊變陡；exZ 為短邊方向（z）的指數，預設同 ex（睡枕橫切面是透鏡形，用較小的值） */
   ex?: number;
+  exZ?: number;
   m?: number;
   /** 縫份形成的薄唇寬（m） */
   lip?: number;
   /** 歐式方枕套的平邊寬（m） */
   flange?: number;
+  /** 信封式枕套在 +x 端超出枕芯的空布長（m）：塌平、往下貼，布緣略為起伏 */
+  envelope?: number;
   /** 皺褶振幅（m）：邊緣中段的縮縫、角落往中心的斜向拉紋；麻布明顯、bouclé 很淡 */
   crease?: number;
   /** 上緣（+z）中間手刀凹陷的深度（m），柔和的 V */
@@ -198,16 +201,16 @@ export interface PillowOpt {
  * 依實物（充氣方形膜、羽絨抱枕型錄厚度）：中央平、往縫邊變陡，縫邊外留約 5 mm 的薄唇；
  * 四邊中段被填充往內拉（角落不動），所以四角薄成「狗耳朵」；邊緣中段布被擠出橫越縫線的縮褶，
  * 角落有往中心的斜向拉紋，整個枕頭的縫線也不在同一平面上。uv 為 (x, z) 公尺。
- * flange > 0 時沿縫邊加一圈平邊（厚 4 mm），外緣也被拉進一半，平邊略為起伏。
+ * flange > 0 時沿縫邊加一圈平邊（厚 4 mm），外緣也被拉進一半，平邊略為起伏；envelope > 0 時 +x 端加信封式枕套的空布。
  */
 export function pillow(w: number, h: number, t: number, o: PillowOpt = {}): THREE.BufferGeometry {
-  const { pinch = 0.07, ex = 2.8, m = 0.6, lip = 0.005, flange = 0, crease = 0.002, chop = 0, settle = 0, roll = 0, back = 1, seed = 1, n = 64 } = o;
+  const { pinch = 0.07, ex = 2.8, exZ = ex, m = 0.6, lip = 0.005, flange = 0, envelope = 0, crease = 0.002, chop = 0, settle = 0, roll = 0, back = 1, seed = 1, n = 64 } = o;
   const a = w / 2, b = h / 2, pos: number[] = [], uv: number[] = [], idx: number[] = [];
   const r = rand(seed);
   // 格點：線性與 sin 各半，縫邊附近較密、中間也夠密（縮褶波長 5 cm 要有 4–5 點）
   const s = (i: number) => { const q = (2 * i) / n - 1; return 0.5 * q + 0.5 * Math.sin((q * Math.PI) / 2); };
   const lu = 1 + lip / a, lv = 1 + lip / b, LIP = 0.0015;
-  const prof = (q: number) => (1 - Math.min(1, Math.abs(q)) ** ex) ** m;
+  const prof = (q: number, e = ex) => (1 - Math.min(1, Math.abs(q)) ** e) ** m;
   // 薄唇：縫線（|s| = 1/l）以內為 1，到最外緣收成 0
   const lipProf = (q: number, l: number) => Math.min(1, (1 - Math.abs(q)) / ((1 - 1 / l) * 0.6));
   const ph = Array.from({ length: 8 }, () => r() * Math.PI * 2);
@@ -235,7 +238,7 @@ export function pillow(w: number, h: number, t: number, o: PillowOpt = {}): THRE
     for (let i = 0; i <= n; i++) for (let j = 0; j <= n; j++) {
       const u = s(i), v = s(j);
       let [x, z] = plan(u, v, pinch);
-      const flat = prof(u * lu) * prof(v * lv);
+      const flat = prof(u * lu) * prof(v * lv, exZ);
       let hy = half * flat * (1 - settle * v) + LIP * lipProf(u, lu) * lipProf(v, lv);
       // 手刀（柔和的 V）：上緣中間下降、壓痕往下約 1/3，兩個上角略翹
       if (chop > 0) {
@@ -269,7 +272,20 @@ export function pillow(w: number, h: number, t: number, o: PillowOpt = {}): THRE
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx);
   g.computeVertexNormals();
-  if (flange <= 0) return g;
+  const extra: THREE.BufferGeometry[] = [];
+  if (envelope > 0) {
+    // 枕套開口端：枕芯以外的空布（兩層、約 3 mm）從縫邊伸出，寬度從被拉進的縫線放回整片布寬，
+    // 比枕身扁、略往下塌（反摺的內片撐著，不會整片垂下），布緣有幾道鬆鬆的波浪
+    const drop = (t / 2) * back * 0.35, env = rand(seed * 7 + 3), ph1 = env() * Math.PI * 2, ph2 = env() * Math.PI * 2;
+    const us = Array.from({ length: 9 }, (_, i) => (envelope * i) / 8), vs = Array.from({ length: 33 }, (_, i) => -b + (2 * b * i) / 32);
+    const flap = (u: number, v: number) => {
+      const k = u / envelope, vv = v / b, x0 = a * (1 - pinch * (1 - vv * vv)) - 0.003;
+      const y = common(1, vv) - drop * (1 - (1 - k) ** 2) + 0.003 * k * Math.sin((v * Math.PI * 2) / 0.09 + ph1) + 0.0015 * Math.sin(v * 31 + ph2) * k;
+      return new THREE.Vector3(x0 + (a + envelope - x0) * k, y, v * (1 - 0.04 * k * k));
+    };
+    extra.push(thickGrid(us, vs, flap, () => 0.003));
+  }
+  if (flange <= 0) return extra.length ? mergeGeometries([g, ...extra].map((x) => x.toNonIndexed()))! : g;
   // 平邊：外框（半個 pinch）挖掉縫線輪廓（內縮 4 mm 與枕身重疊）
   const ring = (ha: number, hb: number, k: number) => {
     const pts: THREE.Vector2[] = [], m = 24;
@@ -295,7 +311,7 @@ export function pillow(w: number, h: number, t: number, o: PillowOpt = {}): THRE
   frame.setAttribute('uv', new THREE.Float32BufferAttribute(fuv, 2));
   const f2 = mergeVertices(frame, 1e-5);
   f2.computeVertexNormals();
-  return mergeGeometries([g.toNonIndexed(), f2.toNonIndexed()])!;
+  return mergeGeometries([g, f2, ...extra].map((x) => x.toNonIndexed()))!;
 }
 
 /**
