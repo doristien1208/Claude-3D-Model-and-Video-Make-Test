@@ -36,3 +36,19 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
   border:1px solid var(--panel-line);border-radius:10px;overflow:hidden}
 #err{position:fixed;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;font-size:15px;color:var(--ink-dim)}
 @media (prefers-reduced-motion: reduce){ *{transition:none!important} }
+/* 影片分鏡：畫布裁成 16:9 置中，四周黑邊；畫框內疊空間名稱、淡入淡出與片尾字卡 */
+body.film #stage{background:#000;display:flex;align-items:center;justify-content:center}
+body.film .title,body.film .dock,body.film .lil-gui.panel,body.film #map{display:none!important}
+.film-frame{position:fixed;pointer-events:none;display:none;overflow:hidden}
+body.film .film-frame{display:block}
+.film-black{position:absolute;inset:0;background:#000;opacity:0}
+.film-caption{position:absolute;left:6%;bottom:10%;color:#f4eee6;font-size:calc(var(--fh) * .042);font-weight:400;
+  letter-spacing:.4em;text-shadow:0 1px 12px rgba(0,0,0,.35);opacity:0}
+.film-end{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(var(--fh) * .014);
+  color:#d8d0c4;font-size:calc(var(--fh) * .021);letter-spacing:.06em;line-height:1.55;opacity:0}
+.film-end p{margin:0;max-width:76%;text-align:center}
+.film-end p:last-child{margin-top:calc(var(--fh) * .03);color:#9d958a;font-size:.9em}
+.film-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;display:none;flex-wrap:nowrap}
+body.film .film-bar{display:flex}
+.film-range{width:min(320px,40vw);accent-color:var(--brass)}
+.film-label{font-size:12.5px;color:var(--ink-dim);font-variant-numeric:tabular-nums;white-space:nowrap;padding:0 6px}

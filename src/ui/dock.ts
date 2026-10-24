@@ -1,10 +1,11 @@
 import type { Viewpoint } from '../data/layout';
 
-export type Mode = 'orbit' | 'walk';
+export type Mode = 'orbit' | 'walk' | 'film';
 
 const HINT: Record<Mode, string> = {
   orbit: '左鍵旋轉、右鍵平移、滾輪縮放。點上方房間名稱可直接走進去。',
   walk: '拖曳畫面轉頭，WASD 或方向鍵移動，按住 Shift 走快一點。',
+  film: '空白鍵播放／暫停，← → 切換鏡頭，Esc 返回。',
 };
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -27,6 +28,7 @@ export function createDock(viewpoints: readonly Viewpoint[], h: DockHandlers) {
   }
   $('bOrbit').onclick = () => h.setMode('orbit');
   $('bWalk').onclick = () => h.setMode('walk');
+  $('bFilm').onclick = () => h.setMode('film');
   $('bDay').onclick = () => h.setNight(false);
   $('bNight').onclick = () => h.setNight(true);
   $('bCut').onclick = () => h.toggleCut();
@@ -35,6 +37,7 @@ export function createDock(viewpoints: readonly Viewpoint[], h: DockHandlers) {
     showMode(m: Mode): void {
       $('bOrbit').setAttribute('aria-pressed', String(m === 'orbit'));
       $('bWalk').setAttribute('aria-pressed', String(m === 'walk'));
+      $('bFilm').setAttribute('aria-pressed', String(m === 'film'));
       $('map').style.display = m === 'walk' ? 'block' : 'none';
       $('bCut').style.display = m === 'orbit' ? '' : 'none';
       $('hint').textContent = HINT[m];

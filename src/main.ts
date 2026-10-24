@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import './ui/style.css';
 import { buildHouse } from './builders';
 import { CURTAIN_PRESETS } from './builders/curtains';
+import { FilmPlayer } from './cameras/film';
 import { createOrbit, ORBIT_FOV } from './cameras/orbit';
 import { WALK_FOV, WalkController } from './cameras/walk';
 import { viewpoints, walkStart } from './data/layout';
@@ -14,6 +15,7 @@ import { mergeStatic } from './render/mergeStatic';
 import { createRenderer } from './render/renderer';
 import { WindowView } from './render/windowView';
 import { createDock, showWebGLError, type Mode } from './ui/dock';
+import { createFilmUI } from './ui/film';
 import { Minimap } from './ui/minimap';
 import { createPanel } from './ui/panel';
 
@@ -67,6 +69,9 @@ const walk = new WalkController(camera, renderer.domElement, house.build.solids,
 walk.dynamicSolids = house.doors.solids;
 createPanel(house.doors, house.build.curtains);
 const minimap = new Minimap(document.getElementById('mapc') as HTMLCanvasElement, house.build.planSegs, walk);
+// 影片分鏡：相機依 data/shots.ts 播放，畫面裁成 16:9
+const film = new FilmPlayer(camera, { isNight: () => night, setNight });
+const filmUI = createFilmUI(film, () => setMode('orbit'));
 
 const dock = createDock(viewpoints, {
   setMode,
@@ -78,7 +83,7 @@ const dock = createDock(viewpoints, {
   },
 });
 
-/** 漫遊時窗外顯示照片（室外地面隱藏）；俯瞰時只有純色背景與地面 */
+/** 漫遊與影片分鏡時窗外顯示照片（室外地面隱藏）；俯瞰時只有純色背景與地面 */
 function applyOutdoor(walkView: boolean): void {
   const show = walkView && viewReady;
   view.show(show ? (night ? 'night' : 'day') : null);
@@ -95,14 +100,14 @@ function probeState(): () => void {
   return () => {
     renderer!.clippingPlanes = clip;
     house.ceiling.visible = ceil;
-    applyOutdoor(mode === 'walk');
+    applyOutdoor(mode !== 'orbit');
     applyMirrors();
   };
 }
 
-/** 鏡面即時反射每格都要把場景再畫一次：只在漫遊時開，俯瞰時看到的是底下的金屬鏡板（環境探針反射） */
+/** 鏡面即時反射每格都要把場景再畫一次：只在漫遊與影片分鏡時開，俯瞰時看到的是底下的金屬鏡板（環境探針反射） */
 function applyMirrors(): void {
-  for (const r of house.build.reflectors) r.visible = mode === 'walk';
+  for (const r of house.build.reflectors) r.visible = mode !== 'orbit';
 }
 
 const BLACK = new THREE.Color(0);
@@ -114,7 +119,7 @@ function applyFrosted(): void {
 
 function applyLight(): void {
   lights.apply(night);
-  applyOutdoor(mode === 'walk');
+  applyOutdoor(mode !== 'orbit');
   applyFrosted();
   if (probesReady) {
     probes.apply(night ? 'night' : 'day', probeState);
@@ -130,7 +135,7 @@ function setNight(v: boolean): void {
 }
 function applyCut(): void {
   renderer!.clippingPlanes = mode === 'orbit' && cut ? [clipPlane] : [];
-  house.ceiling.visible = mode === 'walk';
+  house.ceiling.visible = mode !== 'orbit';
   dock.showCut(cut);
 }
 function setCut(v: boolean): void {
@@ -142,10 +147,12 @@ function setMode(m: Mode): void {
   orbit.enabled = m === 'orbit';
   walk.enabled = m === 'walk';
   if (m === 'orbit') goHome();
-  else camera.fov = WALK_FOV;
-  camera.updateProjectionMatrix();
+  else if (m === 'walk') camera.fov = WALK_FOV;
+  filmUI.show(m === 'film');
+  if (m === 'film') { film.seek(0); film.playing = true; }
+  resize();
   dock.showMode(m);
-  applyOutdoor(m === 'walk');
+  applyOutdoor(m !== 'orbit');
   applyMirrors();
   applyCut();
   // 剖切開關與天花板顯示會改變著色器組合
@@ -155,7 +162,13 @@ function setMode(m: Mode): void {
 
 /* ---------- 迴圈 ---------- */
 function resize(): void {
-  const w = innerWidth, h = innerHeight;
+  let w = innerWidth, h = innerHeight;
+  // 影片分鏡：畫布裁成 16:9 置中（#stage 用 flex 置中）
+  if (mode === 'film') {
+    if (w / h > 16 / 9) w = Math.round((h * 16) / 9);
+    else h = Math.round((w * 9) / 16);
+    filmUI.layout((innerWidth - w) / 2, (innerHeight - h) / 2, w, h);
+  }
   renderer!.setSize(w, h);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
@@ -170,7 +183,8 @@ function loop(t: number): void {
   if (mode === 'walk') {
     walk.update(dt);
     minimap.draw();
-  } else orbit.update();
+  } else if (mode === 'film') filmUI.update(film.update(dt));
+  else orbit.update();
   if (!compiling) renderer!.render(scene, camera);
   requestAnimationFrame(loop);
 }
@@ -188,7 +202,7 @@ requestAnimationFrame(loop);
 
 /* ---------- 除錯／比對介面（與參考版 window.__dbg 相同） ---------- */
 Object.assign(window, {
-  __dbg: { setMode, walk: walk.state, applyLight, setNight, setCut, camera, orbit, setDoor: (id: string, t: number) => house.doors.set(id, t),
+  __dbg: { setMode, walk: walk.state, film, applyLight, setNight, setCut, camera, orbit, setDoor: (id: string, t: number) => house.doors.set(id, t),
     setCurtain: (id: string, t: number) => house.build.curtains.find((c) => c.id === id)?.set(t) },
   __app: { THREE, scene, renderer, camera, build: house.build, doors: house.doors, probes, view, lights, lightMask, ready: textures.ready },
 });
