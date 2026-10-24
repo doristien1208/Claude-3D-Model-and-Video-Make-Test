@@ -1,14 +1,13 @@
 import * as THREE from 'three';
 import { X, Z } from '../core/units';
 import type { ItemOf } from '../data/query';
-import { FACING_YAW, add, gbox, rbox, type Build } from './prims';
+import { add, gbox, rbox, type Build } from './prims';
 import { drape, thickGrid } from './shapes';
 
 /*
  * 書房（2026-10 依調查重做；公尺）：
  *  書桌  HAY Loop Stand Table 250 × 92.5 × 74，胡桃木皮桌板 2.4（方邊）；支架 64.5 × 37 × 72（見 LOOP）
- *  螢幕  Apple Studio Display 62.3 × 47.8（含傾斜支架）、面板 36.2 × 3.1、邊框 1.25、支架深 16.8；
- *        Magic Keyboard（含數字鍵）41.9 × 11.5 × 0.41–1.09、Magic Mouse 11.35 × 5.71 × 2.16
+ *  螢幕、鍵盤、滑鼠見 computer.ts
  *  椅子  Vitra Eames EA 117（見 CHAIR）
  */
 
@@ -134,31 +133,3 @@ export function officeChair(b: Build, it: ItemOf<'officeChair'>): void {
 /** EA 117 尺寸（見 officeChair） */
 /** 座寬 52.5（吊帶 49＋兩側框）、座深 46.5、座高 38.5–50.5 取 46、椅背 40.7 高（總高 = 座高 + 44.5）、扶手在座面上 26；五爪腳 Ø62（估）、雙輪 Ø6；吊帶熱壓橫縫間距 4.8；側框 3.5 × 1.5（估） */
 const CHAIR = { seatH: 0.46, seatD: 0.465, slingW: 0.49, backTop: 0.905, backTilt: 0.2, armH: 0.72, railDepth: 0.035, baseD: 0.62, rib: 0.048 };
-
-/**
- * 桌上螢幕＋鍵盤滑鼠：at 為螢幕面板中心（平面），facing 為螢幕朝向（使用者方向）。
- * 本地座標：x 沿螢幕寬、z 朝使用者。
- */
-export function monitor(b: Build, it: ItemOf<'monitor'>): void {
-  const { mat } = b;
-  const g = new THREE.Group();
-  g.position.set(X(it.at[0]), DESK_TOP, Z(it.at[1]));
-  g.rotation.y = FACING_YAW[it.facing];
-  b.root.add(g);
-  const PW = 0.623, PH = 0.362, PD = 0.031, H = 0.478, FOOT = 0.168;
-  // 面板（鋁背殼＋玻璃正面）：下緣離桌 H − PH
-  const y0 = H - PH;
-  rbox(g, -PW / 2, -PD / 2, PW / 2, PD / 2, y0, H, mat.aluminium, 0.006);
-  const glass = add(g, new THREE.PlaneGeometry(PW - 0.004, PH - 0.004), mat.tv, 0, y0 + PH / 2, PD / 2 + 0.0005);
-  glass.receiveShadow = false;
-  // 支架：一片鋁板（約 18 寬、1.1 厚）從面板背面中段（離桌約 27）往下、在桌面彎成腳（深 16.8）
-  const SW = 0.18, ST = 0.011;
-  gbox(g, SW, 0.27, ST, 0, 0.135 + 0.006, -PD / 2 - 0.035, mat.aluminium, 0.004);
-  gbox(g, SW, ST, FOOT, 0, ST / 2, -FOOT / 2 + 0.03, mat.aluminium, 0.004);
-  // 鍵盤（前低後高的楔形）與滑鼠
-  const kb = gbox(g, 0.419, 0.008, 0.115, 0, 0.004, 0.33, mat.aluminium, 0.003);
-  kb.rotation.x = -0.05;
-  gbox(g, 0.4, 0.002, 0.1, 0, 0.0085, 0.33, mat.plateWhite, 0.0008);
-  const mouse = add(g, new THREE.SphereGeometry(0.5, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat.plateWhite, 0.3, 0, 0.33);
-  mouse.scale.set(0.057, 0.022 * 2, 0.114);
-}

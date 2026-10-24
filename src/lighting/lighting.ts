@@ -24,6 +24,8 @@ export const PRESETS = {
     hemi: { sky: 0xdfe6ea, ground: 0x6e6052, intensity: 1.15 },
     sun: true,
     glow: 0.25, glowSoft: 0.08,
+    // 螢幕畫面
+    screen: 1.1,
     dim: { general: 0, accent: 0, wet: 0, lamp: 0, strip: 0 } as Dim,
     background: 0xc9d2d6, outside: 0xa29d93, exposure: 1.0,
   },
@@ -32,6 +34,8 @@ export const PRESETS = {
     sun: false,
     // 燈具出光面、燈條（數千 cd/m²，曝光後接近白）；燈罩、壁燈面板約數百 cd/m²
     glow: 4000, glowSoft: 300,
+    // 螢幕調暗到約 40 cd/m²（夜間模式），桌布顏色才不會整片過曝
+    screen: 40,
     // 樣品屋夜景：一般崁燈調到 35%，重點燈、燈具、燈條全開
     dim: { general: 0.35, accent: 1, wet: 0.35, lamp: 1, strip: 1 } as Dim,
     background: 0x12151a, outside: 0x1a1b1d, exposure: exposureForEV(5),
@@ -161,6 +165,7 @@ export class Lighting {
     for (const { light, intensity } of this.areaLights) light.intensity = intensity * p.dim.strip;
     this.mat.glow.emissiveIntensity = p.glow;
     this.mat.glowSoft.emissiveIntensity = p.glowSoft;
+    this.mat.screen.emissiveIntensity = p.screen;
     this.scene.background = new THREE.Color(p.background);
     this.mat.outside.color.set(p.outside);
     this.renderer.toneMappingExposure = p.exposure;

@@ -165,7 +165,7 @@ export const windowSpecs: readonly WindowSpec[] = [
 ];
 
 /** 窗簾盒：雙層蛇形簾需要 25 cm 深；紗簾軌道離牆 8 cm、布簾軌道 17 cm；盒內前緣有往下照布簾的洗簾燈（離牆 21 cm） */
-export const CURTAIN_BOX = { depth: 25, h0: 2.6, sheerTrack: 8, mainTrack: 17, washLight: 21 };
+export const CURTAIN_BOX = { depth: 25, h0: 2.6, sheerTrack: 7, mainTrack: 18, washLight: 21 };
 
 /* ---------- 收邊 ---------- */
 

@@ -163,21 +163,99 @@ export function cushion(w: number, d: number, t: number, o: { r?: number; e?: nu
   return g;
 }
 
+/** 0–1 的偽亂數（同一個 seed 每次結果相同） */
+function rand(seed: number): () => number {
+  let s = (Math.floor(seed * 9973) % 2147483646) + 1;
+  return () => (s = (s * 16807) % 2147483647) / 2147483647;
+}
+
+export interface PillowOpt {
+  /** 四邊中段被填充往內拉的比例（半寬的倍數；角落不動） */
+  pinch?: number;
+  /** 厚度輪廓 (1 − |s|^ex)^m：中間平、往縫邊變陡 */
+  ex?: number;
+  m?: number;
+  /** 縫份形成的薄唇寬（m） */
+  lip?: number;
+  /** 歐式方枕套的平邊寬（m） */
+  flange?: number;
+  /** 皺褶振幅（m）：邊緣中段的縮縫、角落往中心的斜向拉紋；麻布明顯、bouclé 很淡 */
+  crease?: number;
+  /** 上緣（+z）中間手刀凹陷的深度（m），柔和的 V */
+  chop?: number;
+  /** 靠著時填充往下沉：下緣 1 + settle 倍厚、上緣 1 − settle 倍 */
+  settle?: number;
+  /** 上緣往前（+y）翻的距離（m） */
+  roll?: number;
+  /** 背面（−y，靠著椅背或床頭的那面）被壓扁的倍率，正面相應鼓一點 */
+  back?: number;
+  seed?: number;
+  n?: number;
+}
+
 /**
- * 抱枕：w × h 的方形布套塞飽後的形狀，平放在 xz 平面、縫邊在 y = 0，兩面各鼓起 t/2；
- * 四邊中段被填充往內拉（pinch），四角尖出。頂點往縫邊集中，鼓起的邊緣才圓順。uv 為 (x, z) 公尺。
- * flange > 0 時沿縫邊加一圈平邊（歐式方枕套的荷葉邊，厚 4 mm），外緣也被拉進一半。
+ * 抱枕：w × h 的方形布套塞飽後的形狀，平放在 xz 平面、縫邊大致在 y = 0，兩面各鼓起約 t/2。
+ * 依實物（充氣方形膜、羽絨抱枕型錄厚度）：中央平、往縫邊變陡，縫邊外留約 5 mm 的薄唇；
+ * 四邊中段被填充往內拉（角落不動），所以四角薄成「狗耳朵」；邊緣中段布被擠出橫越縫線的縮褶，
+ * 角落有往中心的斜向拉紋，整個枕頭的縫線也不在同一平面上。uv 為 (x, z) 公尺。
+ * flange > 0 時沿縫邊加一圈平邊（厚 4 mm），外緣也被拉進一半，平邊略為起伏。
  */
-export function pillow(w: number, h: number, t: number, pinch = 0.07, n = 20, flange = 0): THREE.BufferGeometry {
+export function pillow(w: number, h: number, t: number, o: PillowOpt = {}): THREE.BufferGeometry {
+  const { pinch = 0.07, ex = 2.8, m = 0.6, lip = 0.005, flange = 0, crease = 0.002, chop = 0, settle = 0, roll = 0, back = 1, seed = 1, n = 64 } = o;
   const a = w / 2, b = h / 2, pos: number[] = [], uv: number[] = [], idx: number[] = [];
-  const s = (i: number) => Math.sin(((2 * i) / n - 1) * (Math.PI / 2));
+  const r = rand(seed);
+  // 格點：線性與 sin 各半，縫邊附近較密、中間也夠密（縮褶波長 5 cm 要有 4–5 點）
+  const s = (i: number) => { const q = (2 * i) / n - 1; return 0.5 * q + 0.5 * Math.sin((q * Math.PI) / 2); };
+  const lu = 1 + lip / a, lv = 1 + lip / b, LIP = 0.0015;
+  const prof = (q: number) => (1 - Math.min(1, Math.abs(q)) ** ex) ** m;
+  // 薄唇：縫線（|s| = 1/l）以內為 1，到最外緣收成 0
+  const lipProf = (q: number, l: number) => Math.min(1, (1 - Math.abs(q)) / ((1 - 1 / l) * 0.6));
+  const ph = Array.from({ length: 8 }, () => r() * Math.PI * 2);
+  /** 到四邊的距離（m）、沿最近那條邊的座標與該邊長的一半 */
+  const edgeOf = (u: number, v: number) => {
+    const eu = a * (1 - Math.abs(u)), ev = b * (1 - Math.abs(v));
+    return eu < ev ? { e: eu, along: v * b, half: b, k: u > 0 ? 0 : 1 } : { e: ev, along: u * a, half: a, k: v > 0 ? 2 : 3 };
+  };
+  // 邊緣中段的縮褶：橫越縫線的皺褶，兩面同相位（看起來是一道布繞過縫線），邊的中段最明顯
+  const pucker = (u: number, v: number) => {
+    const { along, half, k } = edgeOf(u, v), mid = Math.cos((Math.PI / 2) * Math.min(1, Math.abs(along) / half)) ** 2;
+    // 波長約 4–6 cm、不完全等距
+    return mid * Math.sin((along * Math.PI * 2) / (0.05 + 0.01 * Math.sin(ph[k])) + 1.2 * Math.sin(along * 23 + ph[k]) + ph[k + 4]);
+  };
+  // 兩面共用的位移：縫線本身的起伏與上緣往前翻，兩面相同，縫邊才不會裂開
+  const common = (u: number, v: number) => {
+    const { e } = edgeOf(u, v);
+    return 0.003 * Math.sin(2.6 * u + ph[0]) * Math.cos(2.2 * v + ph[1]) + crease * 0.6 * pucker(u, v) * Math.exp(-e / 0.01) + roll * Math.max(0, v) ** 2;
+  };
+  const plan = (u: number, v: number, k: number) => [a * u * (1 - k * (1 - v * v)), b * v * (1 - k * (1 - u * u))];
   for (const side of [1, -1]) {
     const o = pos.length / 3;
+    const corners = [[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([cu, cv]) => ({ cu, cv, ph: r() * Math.PI * 2, amp: 0.5 + r() }));
+    const fp = [r() * Math.PI * 2, r() * Math.PI * 2], half = (t / 2) * (side > 0 ? 1 + (1 - back) * 0.5 : back);
     for (let i = 0; i <= n; i++) for (let j = 0; j <= n; j++) {
       const u = s(i), v = s(j);
-      const x = a * u * (1 - pinch * (1 - v * v)), z = b * v * (1 - pinch * (1 - u * u));
-      const f = Math.sqrt(Math.max(0, (1 - Math.abs(u) ** 2.5) * (1 - Math.abs(v) ** 2.5)));
-      pos.push(x, side * (t / 2) * f, z);
+      let [x, z] = plan(u, v, pinch);
+      const flat = prof(u * lu) * prof(v * lv);
+      let hy = half * flat * (1 - settle * v) + LIP * lipProf(u, lu) * lipProf(v, lv);
+      // 手刀（柔和的 V）：上緣中間下降、壓痕往下約 1/3，兩個上角略翹
+      if (chop > 0) {
+        const kv = Math.max(0, (v - 1 / 3) / (2 / 3)) ** 2, k = Math.exp(-(((u * a) / 0.11) ** 2)) * kv;
+        z += chop * (0.15 * Math.abs(u) ** 4 * kv - k);
+        hy *= 1 - 0.5 * k;
+      }
+      const { e } = edgeOf(u, v), off = 1 - Math.exp(-e / 0.008);
+      // 縮褶在面上的部分：離縫線約 1.5 cm 最明顯，6–7 cm 內消失
+      let wr = 1.4 * pucker(u, v) * (e / 0.015) * Math.exp(1 - e / 0.015);
+      // 角落往中心的斜向拉紋：沿對角線，離角約 7 cm 最明顯，橫越對角線起伏一兩道
+      for (const c of corners) {
+        const du = Math.abs(c.cu - u) * a, dv = Math.abs(c.cv - v) * b;
+        const dPar = (du + dv) / Math.SQRT2, dPerp = (du - dv) / Math.SQRT2;
+        wr += c.amp * (dPar / 0.07) * Math.exp(1 - dPar / 0.07) * Math.cos((dPerp * Math.PI * 2) / 0.05 + c.ph) * Math.exp(-((dPerp / 0.06) ** 2));
+      }
+      hy += crease * wr * off;
+      // 面上的低頻起伏（填充不均）
+      hy += 0.002 * flat * Math.sin(u * 2.3 + fp[0]) * Math.sin(v * 1.9 + fp[1]);
+      pos.push(x, side * hy + common(u, v), z);
       uv.push(x, -z);
     }
     const V = (i: number, j: number) => o + i * (n + 1) + j;
@@ -206,10 +284,18 @@ export function pillow(w: number, h: number, t: number, pinch = 0.07, n = 20, fl
   shape.holes.push(new THREE.Path(ring(a - 0.004, b - 0.004, pinch)));
   const frame = slab(shape, 0.004).translate(0, -0.002, 0);
   frame.deleteAttribute('uv');
-  const fp = frame.attributes.position, fuv: number[] = [];
-  for (let i = 0; i < fp.count; i++) fuv.push(fp.getX(i), -fp.getZ(i));
+  frame.deleteAttribute('normal');
+  // 平邊跟著縫線起伏，外緣再自己略為翻翹
+  const fp = frame.attributes.position, fuv: number[] = [], fl = ph[3];
+  for (let i = 0; i < fp.count; i++) {
+    const x = fp.getX(i), z = fp.getZ(i), out = Math.max(0, Math.max(Math.abs(x) - a, Math.abs(z) - b)) / flange;
+    fp.setY(i, fp.getY(i) + common(x / a, z / b) + 0.005 * out * Math.sin(Math.atan2(z, x) * 3 + fl));
+    fuv.push(x, -z);
+  }
   frame.setAttribute('uv', new THREE.Float32BufferAttribute(fuv, 2));
-  return mergeGeometries([g.toNonIndexed(), frame])!;
+  const f2 = mergeVertices(frame, 1e-5);
+  f2.computeVertexNormals();
+  return mergeGeometries([g.toNonIndexed(), f2.toNonIndexed()])!;
 }
 
 /**

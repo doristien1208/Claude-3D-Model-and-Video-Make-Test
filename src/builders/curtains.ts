@@ -7,36 +7,115 @@ import { windowSpec, winFrame } from './windows';
 
 /*
  * 雙層蛇形簾（布前紗後）。參考：
- *  - 滑車間距 60 mm → 一個波 120 mm；拉上時褶深 ±35（紗）／±40（布）mm（Ludvig Svensson、Silent Gliss）
- *  - 收起時前後最深約 160 mm（Silent Gliss 80/160）；收簾寬度約為該片軌道長的 0.20（紗）／0.30（布）（Kirsch 收簾表）
- *  - 波形是圓弧狀的瓣而不是正弦；下緣離地 10 mm，紗簾比布簾短 15 mm
+ *  - 滑車間距 60 mm（一個波 120 mm），倍數：紗 2.1、布 2.3（Silent Gliss 60/100、60/120；台灣蛇形簾 2.3–2.5 倍）
+ *  - 斷面是圓弧的環而不是正弦：每段布長 s = 倍數 × 滑車間距、跨過弦長 c，φ / sin φ = s / c，R = c / (2 sin φ)，
+ *    略超過半圓（Ω 形）；拉上時前後總深約 9（紗）／10（布）cm
+ *  - 收起時滑車擠在一起，環變成窄而深的 U 形、往一側斜靠 20–40°；收簾寬約為該片軌道長的 0.20（紗）／0.24（布）
+ *  - 上緣 7.5 cm 由蛇形帶固定，往下約 40 cm 後每個褶子各自飄移（約 ±0.2 個滑車間距）、深淺不一、略扭轉；
+ *    收起時下襬外張（下襬寬約為上緣的 1.4 倍），拉上時下面 45 cm 約外張 4%
+ *  - 下襬雙折 10 cm、離地 10 mm，紗簾比布簾短 15 mm（日本窗簾尺寸慣例：布 1–2 cm、紗 3–4 cm）
  */
-const PERIOD = 12;            // px
-const SEG_PER_WAVE = 14;
-const ROWS = 6;
+const PITCH = 6;              // 滑車間距（px）
+const SEG = 12;               // 每段環的格數
 const TOP = 2.755;            // 掛在軌道下緣（m）
+const HEADING = 0.075;        // 上緣蛇形帶（m）
+const HEM = 0.1;              // 下襬雙折（m）
+const DEG = Math.PI / 180;
 
 export interface CurtainLayerSpec {
   track: number;              // 離牆距離（px）
-  ampClosed: number;          // 拉上時半褶深（px）
-  ampStacked: number;         // 收起時半褶深（px）
+  fullness: number;           // 倍數（布長 ÷ 軌道長）
+  rhoMin: number;             // 收起時 U 形折彎的最小半徑（px）
   stackK: number;             // 收簾寬度 ÷ 該片軌道長
-  lobe: number;               // 波瓣的圓度（0 = 正弦，>0.5 = 超過半圓）
   drop: number;               // 比布簾短多少（m）
   ao: readonly [number, number]; // 褶子凹處變暗的程度：拉上時、收起時
+  /** 往下時滑車處的橫向飄移（滑車間距的倍數）、收起時下襬外張（倍率） */
+  drift: number;
+  flare: number;
+  /** 上緣蛇形帶、下襬雙折處的不透明度倍率（紗簾布料疊兩層，看起來比較密） */
+  band: number;
 }
 const LAYERS: Record<'sheer' | 'main', CurtainLayerSpec> = {
-  sheer: { track: CURTAIN_BOX.sheerTrack, ampClosed: 3.0, ampStacked: 6.5, stackK: 0.2, lobe: 0.42, drop: 0.015, ao: [0.2, 0.35] },
-  main: { track: CURTAIN_BOX.mainTrack, ampClosed: 4.0, ampStacked: 7.5, stackK: 0.3, lobe: 0.45, drop: 0, ao: [0.35, 0.6] },
+  sheer: { track: CURTAIN_BOX.sheerTrack, fullness: 2.1, rhoMin: 0.8, stackK: 0.2, drop: 0.015, ao: [0.2, 0.35], drift: 0.22, flare: 0.4, band: 2.2 },
+  main: { track: CURTAIN_BOX.mainTrack, fullness: 2.3, rhoMin: 1.2, stackK: 0.24, drop: 0, ao: [0.35, 0.6], drift: 0.17, flare: 0.4, band: 1 },
 };
+
+/** 由下往上的列高（m）：下襬、上緣蛇形帶附近加密，雙折的上緣放兩列（不透明度在這裡切換） */
+function rowHeights(H: number): number[] {
+  const ys = [0, 0.004, 0.012, 0.025, 0.045, 0.07, HEM - 0.002, HEM];
+  for (let y = HEM + 0.06; y < H - 0.4; y += 0.08) ys.push(y);
+  for (let y = H - 0.4; y < H - HEADING - 0.01; y += 0.04) ys.push(y);
+  ys.push(H - HEADING - 0.002, H - HEADING, H - 0.05, H - 0.025, H);
+  return ys;
+}
+
+const smooth = (t: number) => {
+  const x = Math.max(0, Math.min(1, t));
+  return x * x * (3 - 2 * x);
+};
+
+/**
+ * 一段環：布長 s 跨過弦長 c（滑車在 (0, 0)、(c, 0)），往 +off 鼓出；回傳依布長等分的 n + 1 點 [沿軌道, 離軌道]。
+ * 半徑 rho 不小於圓弧解 R 時是單一段圓弧（拉上時的 Ω 形）；較小時是兩段直線接一段圓弧（收起時的 U 形）。
+ */
+function loop(c: number, s: number, rho: number, n: number): [number, number][] {
+  // 圓弧解：φ / sin φ = s / c
+  let lo = 1e-4, hi = Math.PI - 1e-4;
+  for (let i = 0; i < 40; i++) {
+    const m = (lo + hi) / 2;
+    if (m / Math.sin(m) < s / c) lo = m;
+    else hi = m;
+  }
+  const phi = (lo + hi) / 2, R = c / (2 * Math.sin(phi));
+  let rr = Math.min(rho, R), hc: number, T: number, span: number;
+  if (rr >= R - 1e-6) {
+    rr = R;
+    hc = -R * Math.cos(phi);
+    T = 0;
+    span = 2 * phi;
+  } else {
+    // 圓心高 hc：兩條切線 + 繞過頂端的圓弧總長 = s
+    const len = (h: number) => {
+      const d = Math.hypot(c / 2, h), t = Math.sqrt(Math.max(0, d * d - rr * rr));
+      const sp = 2 * Math.PI - 2 * Math.atan2(c / 2, h) - 2 * Math.acos(Math.min(1, rr / d));
+      return { t, sp, L: 2 * t + rr * sp };
+    };
+    let a = Math.sqrt(Math.max(0, rr * rr - (c * c) / 4)), b = s;
+    for (let i = 0; i < 50; i++) {
+      const m = (a + b) / 2;
+      if (len(m).L < s) a = m;
+      else b = m;
+    }
+    hc = (a + b) / 2;
+    const r = len(hc);
+    T = r.t;
+    span = r.sp;
+  }
+  const a1 = Math.PI / 2 + span / 2, ta: [number, number] = [c / 2 + rr * Math.cos(a1), hc + rr * Math.sin(a1)];
+  const L = 2 * T + rr * span, pts: [number, number][] = [];
+  for (let i = 0; i <= n; i++) {
+    const l = (i / n) * L;
+    if (T > 0 && l <= T) pts.push([ta[0] * (l / T), ta[1] * (l / T)]);
+    else if (T > 0 && l >= T + rr * span) {
+      const k = (L - l) / T;
+      pts.push([c - ta[0] * k, ta[1] * k]);
+    } else {
+      const a = a1 - (l - T) / rr;
+      pts.push([c / 2 + rr * Math.cos(a), hc + rr * Math.sin(a)]);
+    }
+  }
+  return pts;
+}
 
 /** 一片蛇形簾：固定端在 anchor（牆側），往 dir 方向拉，全拉時到 reach */
 class WavePanel {
   readonly mesh: THREE.Mesh;
-  private readonly waves: number;
+  private readonly loops: number;
   private readonly cols: number;
-  /** 每個波各自的深度倍率與上下擺動相位：布不會完全規則 */
-  private readonly jitter: { amp: number; phase: number }[] = [];
+  private readonly ys: number[];
+  /** 每個滑車處往下飄移的大小、相位與頻率，每段環的扭轉相位：布不會完全規則 */
+  private readonly carriers: { amp: number; ph: number; k: number }[] = [];
+  private readonly twist: { ph: number; k: number }[] = [];
   constructor(
     private readonly hor: boolean,
     private readonly across: number,      // 軌道的 across 座標（px）
@@ -48,17 +127,21 @@ class WavePanel {
     private readonly bottom: number,
     material: THREE.Material,
   ) {
-    this.waves = Math.max(3, Math.round(reach / PERIOD) | 1); // 奇數個波，兩端都回到軌道線
-    this.cols = this.waves * SEG_PER_WAVE;
+    // 奇數個波（偶數段環），兩端都回到軌道線
+    this.loops = 2 * Math.max(3, Math.round(reach / (2 * PITCH)) | 1);
+    this.cols = this.loops * SEG;
+    this.ys = rowHeights(TOP - bottom - layer.drop);
     const r = rng(Math.round(anchor * 7 + across * 13));
-    for (let i = 0; i <= this.waves; i++) this.jitter.push({ amp: 0.82 + 0.36 * r(), phase: r() * Math.PI * 2 });
+    for (let i = 0; i <= this.loops; i++) this.carriers.push({ amp: 0.5 + r(), ph: r() * Math.PI * 2, k: 1.5 + 2 * r() });
+    for (let i = 0; i < this.loops; i++) this.twist.push({ ph: r() * Math.PI * 2, k: 1 + 2 * r() });
+    const rows = this.ys.length - 1;
     const geo = new THREE.BufferGeometry();
-    const n = (this.cols + 1) * (ROWS + 1);
+    const n = (this.cols + 1) * (rows + 1);
     geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
     geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(n * 2), 2));
-    geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 4), 4));
     const idx: number[] = [];
-    for (let r = 0; r < ROWS; r++) for (let c = 0; c < this.cols; c++) {
+    for (let r = 0; r < rows; r++) for (let c = 0; c < this.cols; c++) {
       const a = r * (this.cols + 1) + c, b2 = a + 1, d = a + this.cols + 1, e = d + 1;
       idx.push(a, d, b2, b2, d, e);
     }
@@ -71,47 +154,55 @@ class WavePanel {
 
   /** t：0 = 收起、1 = 拉上 */
   set(t: number): void {
-    const L = this.layer;
-    const stack = L.stackK * this.reach;
-    const len = stack + (this.reach - stack) * t;
-    const p = len / this.waves, pc = this.reach / this.waves, ps = stack / this.waves;
-    const squeeze = (pc - p) / (pc - ps); // 0 = 拉上、1 = 收起
-    const amp = L.ampClosed + (L.ampStacked - L.ampClosed) * Math.max(0, Math.min(1, squeeze));
-    const lobe = L.lobe + 0.15 * Math.max(0, Math.min(1, squeeze));
+    const L = this.layer, ys = this.ys, H = ys[ys.length - 1], N = this.loops;
+    const c0 = this.reach / N, s = L.fullness * c0;
+    const c = (this.reach * (L.stackK + (1 - L.stackK) * t)) / N;
+    const sq = smooth((c0 - c) / (c0 - L.stackK * c0)); // 0 = 拉上、1 = 收起
     const pos = this.mesh.geometry.attributes.position as THREE.BufferAttribute;
     const uv = this.mesh.geometry.attributes.uv as THREE.BufferAttribute;
     const col = this.mesh.geometry.attributes.color as THREE.BufferAttribute;
     // 褶子凹處的遮蔽：半球光從上方照，垂直布面受光都一樣，靠這個讓褶子讀得出來；收得越緊越暗
-    const sq = Math.max(0, Math.min(1, squeeze)), aoStrength = L.ao[0] + (L.ao[1] - L.ao[0]) * sq;
-    const h0 = this.bottom + L.drop, h1 = TOP;
-    let arc = 0, prevA = 0, prevK = 0;
-    for (let c = 0; c <= this.cols; c++) {
-      const θ = (c / SEG_PER_WAVE) * Math.PI * 2;
-      // 沿軌道的位置：在波峰處放慢，讓波瓣呈圓弧（θ + lobe·sin2θ）
-      const along = this.anchor + this.dir * (p / (Math.PI * 2)) * (θ + lobe * Math.sin(2 * θ));
-      // 相鄰兩個波的深度倍率平滑過渡
-      const wi = c / SEG_PER_WAVE, w0 = Math.floor(wi), wt = wi - w0;
-      const j0 = this.jitter[w0], j1 = this.jitter[Math.min(w0 + 1, this.waves)];
-      const ampJ = amp * (j0.amp + (j1.amp - j0.amp) * wt), ph = j0.phase + (j1.phase - j0.phase) * wt;
-      const off = ampJ * Math.sin(θ);
-      const k = this.across + this.σ * off;
-      if (c > 0) arc += Math.hypot(along - prevA, k - prevK) / 100;
-      prevA = along; prevK = k;
-      const [x, y] = this.hor ? [along, k] : [k, along];
-      const facing = (1 + Math.sin(θ)) / 2; // 1 = 波峰朝室內、0 = 凹進去靠牆
-      const ao = 1 - aoStrength * Math.pow(1 - facing, 1.5);
-      for (let r = 0; r <= ROWS; r++) {
-        const v = r / ROWS, i = r * (this.cols + 1) + c;
-        col.setXYZ(i, ao, ao, ao);
-        // 下襬略收（越往下褶深略小），並隨高度輕微擺動
-        const sc = 0.9 + 0.1 * v + 0.05 * Math.sin(v * 4.2 + ph) * (1 - v);
-        const sway = 0.35 * Math.sin(v * 3.1 + ph) * (1 - v) * this.dir;
-        const xs = this.hor ? x + sway : this.across + (x - this.across) * sc;
-        const ys = this.hor ? this.across + (y - this.across) * sc : y + sway;
-        pos.setXYZ(i, X(xs), h0 + (h1 - h0) * v, Z(ys));
-        uv.setXY(i, arc, h0 + (h1 - h0) * v);
+    const aoStrength = L.ao[0] + (L.ao[1] - L.ao[0]) * sq;
+    const h0 = this.bottom + L.drop;
+    const xs = new Float64Array(N + 1);
+    ys.forEach((y, r) => {
+      const down = H - y, d = down / H;
+      // 上緣由滑車固定；往下約 40 cm 後各自飄移，越往下越明顯
+      const free = smooth((down - HEADING) / 0.4);
+      // 下襬外張：收起時像 A 字（下襬約 1.4 倍寬），拉上時下面 45 cm 約 4%
+      const flare = 1 + L.flare * sq * d * d + 0.04 * (1 - sq) * smooth((0.45 - y) / 0.45);
+      for (let j = 0; j <= N; j++) {
+        const cj = this.carriers[j];
+        xs[j] = j * c * flare + (j > 0 ? L.drift * c * free * d * cj.amp * Math.sin(y * cj.k + cj.ph) : 0);
       }
-    }
+      // 收起時環往同一側斜靠（約 30°），越往下折彎越圓；拉上時 rho 很大 → 單一段圓弧
+      const lean = Math.tan(30 * sq * DEG);
+      const rho = L.rhoMin * (1 + 0.3 * d) + (1 - sq) * 100;
+      // 上緣滑車之間被拉出的細小張力紋（約 2 mm），往下 12 cm 內消失
+      const tension = 0.2 * Math.exp(-Math.max(0, down - HEADING) / 0.12) * (1 - sq * 0.5);
+      for (let k = 0; k < N; k++) {
+        const side = k % 2 === 0 ? 1 : -1, tw = this.twist[k], ck = Math.max(xs[k + 1] - xs[k], 0.05);
+        const pts = loop(ck, s, rho, SEG);
+        // 環的軸略為扭轉（±7°），以弦中點為軸
+        const rot = 7 * DEG * free * Math.sin(y * tw.k + tw.ph), cr = Math.cos(rot), sr = Math.sin(rot);
+        for (let i = k === 0 ? 0 : 1; i <= SEG; i++) {
+          const [pa, po] = pts[i], f = i / SEG, ox = pa - ck / 2, oy = side * po;
+          let along = xs[k] + ck / 2 + ox * cr - oy * sr, off = ox * sr + oy * cr;
+          along += off * lean;
+          off += tension * Math.sin(3 * Math.PI * f) * side;
+          const kk = this.across + this.σ * off, a = this.anchor + this.dir * along;
+          const [x, z] = this.hor ? [a, kk] : [kk, a];
+          const facing = side > 0 ? (1 + Math.sin(Math.PI * f)) / 2 : (1 - Math.sin(Math.PI * f)) / 2; // 1 = 環的頂端朝室內
+          const ao = 1 - aoStrength * Math.pow(1 - facing, 1.5);
+          const vi = r * (this.cols + 1) + k * SEG + i;
+          // 紗簾：上緣蛇形帶與下襬雙折處布疊兩層，比較不透
+          col.setXYZW(vi, ao, ao, ao, y < HEM || down < HEADING ? L.band : 1);
+          pos.setXYZ(vi, X(x), h0 + y, Z(z));
+          // 布寬（uv）：布不會伸長，每一列都是同樣的布長
+          uv.setXY(vi, ((k + f) * s) / 100, h0 + y);
+        }
+      }
+    });
     pos.needsUpdate = uv.needsUpdate = col.needsUpdate = true;
     this.mesh.geometry.computeVertexNormals();
     this.mesh.geometry.computeBoundingSphere();

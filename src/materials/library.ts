@@ -111,6 +111,66 @@ function rollEndTexture(): THREE.Texture {
   return tex;
 }
 
+/**
+ * 螢幕畫面（16:9）：暖色系的沙丘漸層桌布，上緣半透明選單列、下緣置中的 Dock（圓角方塊圖示），
+ * 一看就是開著的電腦，但不用任何品牌圖案。
+ */
+function screenTexture(): THREE.Texture {
+  const W = 1280, H = 720, c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const g = c.getContext('2d')!;
+  const sky = g.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, '#26335c');
+  sky.addColorStop(0.45, '#8d5f78');
+  sky.addColorStop(0.75, '#dc9068');
+  sky.addColorStop(1, '#f0b77c');
+  g.fillStyle = sky;
+  g.fillRect(0, 0, W, H);
+  // 三層沙丘：越前面越暖、越暗
+  const dunes: [number, number, number, string, string][] = [
+    [0.55, 60, 1.3, '#b7707a', '#7d4a63'], [0.68, 50, 2.1, '#d9875f', '#9a5550'], [0.82, 40, 1.7, '#8f4a45', '#4d2a35'],
+  ];
+  dunes.forEach(([y0, amp, f, c0, c1], k) => {
+    const grad = g.createLinearGradient(0, y0 * H - amp, 0, H);
+    grad.addColorStop(0, c0);
+    grad.addColorStop(1, c1);
+    g.fillStyle = grad;
+    g.beginPath();
+    g.moveTo(0, H);
+    for (let x = 0; x <= W; x += 8) g.lineTo(x, y0 * H + amp * Math.sin((x / W) * Math.PI * f + k * 1.7) + 0.4 * amp * Math.sin((x / W) * Math.PI * f * 3.1 + k));
+    g.lineTo(W, H);
+    g.fill();
+  });
+  const rr = (x: number, y: number, w: number, h: number, r: number) => {
+    g.beginPath();
+    g.roundRect(x, y, w, h, r);
+    g.fill();
+  };
+  // 選單列與幾個選單字樣（用短條代替文字）
+  g.fillStyle = 'rgba(255,255,255,0.16)';
+  g.fillRect(0, 0, W, 22);
+  g.fillStyle = 'rgba(255,255,255,0.85)';
+  [[26, 30], [72, 26], [112, 30], [156, 34], [204, 40], [258, 34]].forEach(([x, w]) => rr(x, 8, w, 7, 2));
+  [[1080, 20], [1110, 26], [1150, 104]].forEach(([x, w]) => rr(x, 8, w, 7, 2));
+  // Dock
+  const icons = ['#3d8af7', '#f5f5f7', '#34c759', '#ff9f0a', '#ff375f', '#5e5ce6', '#64d2ff', '#ffd60a', '#8e8e93', '#30b0c7'];
+  const S = 46, gap = 10, dw = icons.length * (S + gap) + gap, dx = (W - dw) / 2, dy = H - S - 22;
+  g.fillStyle = 'rgba(255,255,255,0.22)';
+  rr(dx, dy - 8, dw, S + 16, 18);
+  icons.forEach((col, i) => {
+    const x = dx + gap + i * (S + gap), grad = g.createLinearGradient(0, dy, 0, dy + S);
+    grad.addColorStop(0, col);
+    grad.addColorStop(1, `color-mix(in srgb, ${col} 70%, black)`);
+    g.fillStyle = grad;
+    rr(x, dy, S, S, 11);
+  });
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
+
 /** 玻璃表面最大傾斜（弧度，約 0.46°）：調小，只讓反射有一點點起伏 */
 const GLASS_SLOPE = 0.008;
 
@@ -128,15 +188,23 @@ export function createMaterials(tex: TextureLibrary) {
     if (tint) m.color.setRGB(tint[0], tint[1], tint[2]);
     return m;
   };
-  /** 布料加絨面光澤（sheen）：斜看時邊緣泛白，沙發、抱枕才不像塑膠 */
-  const cloth = (name: TexName, tint: RGB, sheenColor: number) => {
+  /**
+   * 布料（Filament 布料模型、KHR_materials_sheen、V-Ray 布料建議）：絨面光澤 sheen 取代大部分鏡面反射，
+   * sheenColor 預設為 √底色（比底色亮），斜看時邊緣柔和泛亮；鏡面反射調低（specularIntensity），
+   * 不然整片會蒙上一層灰白的光。Poly Haven 布料貼圖已轉成線性平均 0.45 的中性灰，底色 = 倍率 × 0.45。
+   */
+  const cloth = (name: TexName, tint: RGB, o: { sheen?: number; sheenRoughness?: number; spec?: number; sheenColor?: number } = {}) => {
     const m = new THREE.MeshPhysicalMaterial({
       map: tex.get(name, 'base'), normalMap: tex.get(name, 'nrm'), roughnessMap: tex.get(name, 'orm'), aoMap: tex.get(name, 'orm'),
-      roughness: 1, metalness: 0, sheen: 1, sheenRoughness: 0.7, sheenColor,
+      roughness: 1, metalness: 0, sheen: o.sheen ?? 1, sheenRoughness: o.sheenRoughness ?? 0.75, specularIntensity: o.spec ?? 0.3,
     });
     m.color.setRGB(tint[0], tint[1], tint[2]);
+    if (o.sheenColor !== undefined) m.sheenColor.set(o.sheenColor);
+    else m.sheenColor.setRGB(...(tint.map((c) => Math.sqrt(Math.min(1, c * 0.45))) as [number, number, number]));
     return m;
   };
+  /** 麻布：絨面光澤較弱、較集中，鏡面反射略高 */
+  const LINEN = { sheen: 0.45, sheenRoughness: 0.6, spec: 0.4 };
   const M = (o: THREE.MeshStandardMaterialParameters) =>
     new THREE.MeshStandardMaterial({ roughness: 0.8, metalness: 0, ...o });
   const terryN = terryNormalMap(), rollEnd = rollEndTexture(), glassN = glassNormal(GLASS_SLOPE);
@@ -167,18 +235,18 @@ export function createMaterials(tex: TextureLibrary) {
     duvet: PBR('fabric', TINTS.duvet),
     // 沙發：燕麥灰褐羊毛 bouclé（座框、坐墊、椅背墊同一塊布）；抱枕：奶油色 bouclé、赭黃與陶土紅粗麻
     // （Poly Haven 貼圖已轉成線性平均 0.45 的中性灰，倍率換算自原本 fabric 貼圖上的顏色）
-    sofa: cloth('boucle', [0.508, 0.391, 0.297], 0x6f655b),
-    pillowCream: cloth('boucle', [1.615, 1.414, 1.113], 0xb9b2a4),
+    sofa: cloth('boucle', [0.508, 0.391, 0.297]),
+    pillowCream: cloth('boucle', [1.615, 1.414, 1.113]),
     // 床頭板、床座：深咖啡羊毛 bouclé（倍率換算自原本 fabric 貼圖上的顏色）
-    headboard: cloth('boucle', [0.226, 0.147, 0.104], 0x4a3d33),
+    headboard: cloth('boucle', [0.226, 0.147, 0.104]),
     // 歐式方枕：燕麥色粗麻
-    bedOat: cloth('roughLinen', [1.3, 1.09, 0.79], 0xd8cbb5),
+    bedOat: cloth('roughLinen', [1.3, 1.09, 0.79], LINEN),
     // 植鞣鞍皮（深咖啡）：西班牙椅
     saddle: PBR('leather', [0.64, 0.67, 0.66]),
-    ochre: cloth('roughLinen', [1.05, 0.548, 0.195], 0x9c6a3c),
-    pillowRust: cloth('roughLinen', [0.839, 0.254, 0.137], 0x8a5040),
+    ochre: cloth('roughLinen', [1.05, 0.548, 0.195], LINEN),
+    pillowRust: cloth('roughLinen', [0.839, 0.254, 0.137], LINEN),
     // 刷毛羊毛毯（HAY Mono，深咖啡灰）
-    wool: cloth('fabric', [0.26, 0.21, 0.18], 0x6a5d55),
+    wool: cloth('fabric', [0.26, 0.21, 0.18], { sheenColor: 0x6a5d55 }),
     rug: PBR('rug', TINTS.rug),
     rug2: PBR('rug', TINTS.rug2),
     // 黑色皮革（Eames 鋁框椅吊帶）
@@ -197,6 +265,8 @@ export function createMaterials(tex: TextureLibrary) {
       transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }),
     // 電視（關機）：OLED 光面，抗反射膜約 1% 反射
     tv: new THREE.MeshPhysicalMaterial({ color: 0x0e0e0e, roughness: 0.05, ior: 1.22 }),
+    // 螢幕畫面（只發光、不反射；前面另疊一層 glass 做玻璃反射）：亮度由 lighting.ts 依日夜設定
+    screen: M({ color: 0x000000, roughness: 1, emissive: 0xffffff, emissiveMap: screenTexture(), emissiveIntensity: 1 }),
     // 電視機身與窄邊框（霧黑）
     tvBody: M({ color: 0x161617, roughness: 0.5 }),
     // 植物葉片（琴葉榕一類的蠟質葉）：正面深綠亮面、背面淺綠霧面（葉片用正反兩個 InstancedMesh）
@@ -239,9 +309,14 @@ export function createMaterials(tex: TextureLibrary) {
     fridgeGlass: new THREE.MeshPhysicalMaterial({ color: 0x232526, roughness: 0.12, ior: 1.5 }),
     // 深古銅陽極鋁（Tiger Drylac Dark Bronze #4E4542；陽極處理以金屬建模）
     alu: M({ color: 0x4e4542, roughness: 0.3, metalness: 1 }),
-    // 窗簾：象牙白麻紗（半透明）、燕麥色布簾；雙面
-    sheer: PBR('fabric', [1.55, 1.5, 1.38], { transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false, vertexColors: true }),
-    drape: PBR('fabric', [0.92, 0.8, 0.64], { side: THREE.DoubleSide, vertexColors: true }),
+    // 窗簾（雙面）：象牙白聚酯紗（約 50 g/m²，三角斷面絲有細微閃光）、燕麥色麻感布簾（200–300 g/m²）。
+    // 紗：粗糙 0.7、白色絨面光澤較集中、不透明度 0.4，斜看時較密（grazingAlpha，見 envProbes）；布：絨面光澤 √底色、鏡面反射調低
+    sheer: new THREE.MeshPhysicalMaterial({ map: tex.get('fabric', 'base'), normalMap: tex.get('fabric', 'nrm'), color: new THREE.Color(1.55, 1.5, 1.38),
+      roughness: 0.7, sheen: 0.45, sheenRoughness: 0.4, sheenColor: new THREE.Color(0.85, 0.85, 0.85), specularIntensity: 0.5,
+      transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false, vertexColors: true }),
+    drape: new THREE.MeshPhysicalMaterial({ map: tex.get('fabric', 'base'), normalMap: tex.get('fabric', 'nrm'), roughnessMap: tex.get('fabric', 'orm'),
+      aoMap: tex.get('fabric', 'orm'), color: new THREE.Color(0.92, 0.8, 0.64), roughness: 1, sheen: 0.8, sheenRoughness: 0.65,
+      sheenColor: new THREE.Color(0.666, 0.59, 0.496), specularIntensity: 0.35, side: THREE.DoubleSide, vertexColors: true }),
     // 開關插座面板：霧白（灰泥牆）、深灰（木作）；防水蓋
     plateWhite: M({ color: 0xf1eee8, roughness: 0.35 }),
     plateDark: M({ color: 0x3b3c3d, roughness: 0.4, metalness: 0.15 }),
@@ -269,6 +344,8 @@ export function createMaterials(tex: TextureLibrary) {
     bookCover: M({ color: 0xffffff, roughness: 0.7 }),
   };
   for (const [k, m] of Object.entries(mat)) m.name = k;
+  // 紗簾斜看時較密（真的紗在掠射角幾乎不透）：不透明度 × (1 + k·(1 − |N·V|)³)，由 envProbes 的著色器修改套用
+  mat.sheer.userData.grazingAlpha = 1.4;
 
   return { mat };
 }

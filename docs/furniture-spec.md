@@ -49,6 +49,17 @@
 | 收納箱 | [IKEA TJENA](https://www.ikea.cn/cn/en/p/tjena-storage-box-with-lid-white-40374356/) | 牛皮紙方塊 48 × 26 × 30 | 50 × 35 × 30 附蓋，兩個疊放 | 白色紙板（這個尺寸只有白色）、套蓋 3 cm、短邊把手孔 8.5 × 2.75 |
 | 掛畫（新增） | [IKEA RÖDALM](https://www.ikea.com/ph/en/p/roedalm-frame-black-40550104/) | 無 | 沙發後（公衛北牆）50 × 70 ×2、間距 6；客房前走廊西牆兩盞壁燈之間 ×1；中心高 150 | 黑框 52 × 72 × 3、白卡紙開口 39 × 49、聚苯乙烯面板；版畫為程式繪製的抽象構圖（拱形、日落、等高線） |
 
+## 細修：抱枕、窗簾、電腦（2026-10-25）
+
+| 物件 | 參考 | 原本 | 改成 | 造型重點 |
+|---|---|---|---|---|
+| 抱枕 | 型錄厚度（[R&B](https://www.roomandboard.com/catalog/home-decor/throw-pillows/feather-down-throw-pillow-inserts)、[Mercana](https://www.cymax.com/Mercana-20-x-20-Down-pillow-insert-67161.htm)）、充氣方形膜（[COMSOL](https://doc.comsol.com/6.4/doc/com.comsol.help.models.sme.membrane_airbag_inflation/membrane_airbag_inflation.html)、[Mylar balloon](https://en.wikipedia.org/wiki/Mylar_balloon_(geometry))） | 50 × 50 鼓 17、45 × 45 鼓 15；表面光滑 | 50 × 50 鼓 14、45 × 45 鼓 12、腰枕 11；睡枕 50 × 75 鼓 14 | 中央平、往縫邊變陡（(1 − \|s\|^2.8)^0.6），縫外 5 mm 薄唇；邊中段內縮約 1.75（角不動）→ 四角薄成狗耳朵；邊中段橫越縫線的縮褶、角落斜向拉紋（麻布 3 mm、bouclé 1.2 mm）；靠著時下緣厚 15%、上緣略往前翻、陷進坐墊 1 cm，方枕上緣柔和手刀（3–3.5 cm） |
+| 布料材質 | [Filament 布料模型](https://google.github.io/filament/main/materials.html)、[KHR_materials_sheen](https://github.com/KhronosGroup/glTF/blob/main/extensions/2.0/Khronos/KHR_materials_sheen/README.md)、[V-Ray 布料](https://novedge.com/blogs/design-news/v-ray-tip-creating-realistic-fabric-materials-with-v-ray-sheen) | 絨面光澤顏色比底色暗、鏡面反射全開 | sheenColor = √底色；bouclé sheen 1／粗糙 0.75、麻布 0.45／0.6；specularIntensity 0.3–0.4 | 斜看時邊緣柔和泛亮，不蒙一層灰白光 |
+| 蛇形簾 | [Silent Gliss Wave](https://www.ritetrack.co.uk/user/PDF/Wave%20Guide%20Oct%202016.pdf)、[MUER 蛇形簾](https://muercurtain.com.tw/%E8%9B%87%E5%BD%A2%E7%B0%BEtempo-wave.html)、[Curtarra](https://www.curtarra.com/blogs/curtain-hanging/ripple-fold-curtains-101-the-ultimate-guide) | 正弦波、6 列、上下完全一樣 | 滑車間距 6、倍數紗 2.1／布 2.3；斷面為圓弧環（Ω 形，前後深約 9／10）；約 45 列 | 上緣 7.5 固定，往下 40 cm 後滑車處各自飄移 ±0.2 間距（褶子深淺隨之變化）、環軸扭轉 ±7°；收起時環變窄深的 U 形、斜靠 30°、下襬外張 1.4 倍；拉上時下面 45 cm 外張 4%；紗簾上緣蛇形帶、下襬雙折 10 cm 較不透，掠射角較密。軌道離牆：紗 8 → 7、布 17 → 18（環較深，兩層才不會打架） |
+| 螢幕 | [Apple Studio Display 規格](https://www.apple.com/in/studio-display/specs/)與官方正投影圖量測 | 3.1 厚的方塊、黑畫面、支架兩片板 | 本體 62.27 × 36.23 × 1.9、圓角 0.5；黑邊 1.31–1.33（無下巴）；可視區 59.65 × 33.56 | 玻璃蓋滿正面、鏡頭 Ø0.33；支架 15.2 寬、0.7 鋁板、腳 16.8（玻璃前 5.6），手臂後仰約 11° 繞過離桌 20.7 的 Ø2.05 鉸鏈管、開 4.15 × 6 走線孔；背面四個 USB-C 孔、電源插頭與黑色編織線；本體後仰 5°。畫面開著（暖色沙丘桌布、選單列、Dock），白天 1.1、夜間約 40 cd/m² |
+| 鍵盤 | [Magic Keyboard（Touch ID）規格](https://support.apple.com/en-us/121954)、官方俯視圖量測、[Deskthority](https://deskthority.net/wiki/Apple_Magic_Keyboard) | 41.9 寬（含數字鍵）的兩片板 | 改精簡配列 27.89 × 11.49、前 0.41 → 後 1.09 楔形 | 78 顆鍵帽（鍵距 19.0 × 18.5、鍵 16.9 × 16.3、高出鋁面 0.9），功能列全高、esc 1.5u、↑↓ 共用一格、四角鍵外角 R6；台灣注音字樣（英文右上、注音左下）、Touch ID 圈 |
+| 滑鼠 | [Magic Mouse 規格](https://support.apple.com/en-sg/121931)、官方側視／俯視圖量測 | 壓扁的半球 | 11.35 × 5.71 × 2.16 | 依量測表做平面輪廓（兩端對稱、比半圓鈍）、上殼扁拱（最高在正中）、銀色底座（中間 1.29 高、往兩端收）、兩條黑色滑軌著地；白色亮面＋透明漆 |
+
 ## 需要的材質貼圖
 
 | 材質 | 用在哪 | 來源選項 |

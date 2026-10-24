@@ -4,13 +4,13 @@ import type { Side } from '../data/layout';
 import type { ItemOf } from '../data/query';
 import { tolomeoArm } from './fixtures';
 import { FACING_YAW, add, gbox, leanOn, rbox, worldUV, type Build } from './prims';
-import { cushion, pillow, samples, thickGrid } from './shapes';
+import { cushion, pillow, samples, thickGrid, type PillowOpt } from './shapes';
 
 /*
  * 臥室（2026-10 依調查重做；公尺）：
  *  床    歐規床墊 180 × 200（主臥）／160 × 200（客房），厚 28／25；布面床座 22 高放在內縮的深色踢腳上（IKEA LYNGÖR、Smilow 懸浮床架）
  *  寢具  被子 240 × 260／220 × 240，中間鬆 7、邊緣滾邊 2，兩側垂下約 30，床頭端往回折約 1/4；
- *        歐式方枕 65 × 65（加 5 cm 平邊、鼓 18）×2 立靠、枕頭 50 × 75（鼓 15）×2、腰枕 30 × 50；床尾巾 55 寬、0.8 厚
+ *        歐式方枕 65 × 65（加 5 cm 平邊、鼓 18）×2 立靠、枕頭 50 × 75（鼓 14）×2、腰枕 30 × 50；床尾巾 55 寬、0.8 厚
  *        （IKEA 枕套尺寸、wald 床尾巾、飯店與樣品屋鋪法）
  *  床頭櫃 Article Lenia／EQ3 Marcel：抽屜面板退在櫃框內 3.5 cm，上緣一道木唇當取手
  *  壁燈  Artemide Tolomeo Micro Wall（黑 A010930）：圓形拋光壁座 Ø9.8、下臂約 30、上臂約 32（肘後尾端 4.5）、管徑 1.1、
@@ -91,14 +91,15 @@ export function bed(b: Build, it: ItemOf<'bed'>): void {
 
   /* ---------- 枕頭 ---------- */
   const deg = Math.PI / 180, S = V(0, 0, 1);
-  const P = (w: number, h: number, t: number, m: THREE.Material, x: number, y: number, z: number, tilt: number, roll: number, flange = 0) =>
-    leanOn(g, pillow(w, h, t, 0.07, 20, flange), m, V(x, y, z), S, h, tilt * deg, roll * deg);
+  let seed = x1;
+  const P = (w: number, h: number, t: number, m: THREE.Material, x: number, y: number, z: number, tilt: number, roll: number, o: PillowOpt = {}) =>
+    leanOn(g, pillow(w, h, t, { seed: ++seed, ...o }), m, V(x, y, z), S, h, tilt * deg, roll * deg);
   // 歐式方枕立靠床頭板，前面兩個枕頭斜靠，最前面一個腰枕
   for (const s of [-1, 1]) {
-    P(0.65, 0.65, 0.18, mat.bedOat, s * 0.38, top + 0.04, 0.1, 12, s * 1.5, 0.05);
-    P(0.75, 0.5, 0.15, mat.linen, s * 0.385, top - 0.005, 0.3, 28, -s * 2);
+    P(0.65, 0.65, 0.18, mat.bedOat, s * 0.38, top + 0.04, 0.1, 12, s * 1.5, { flange: 0.05, crease: 0.0025, settle: 0.1, back: 0.85 });
+    P(0.75, 0.5, 0.14, mat.linen, s * 0.385, top - 0.005, 0.3, 28, -s * 2, { crease: 0.002, settle: 0.06 });
   }
-  P(0.5, 0.3, 0.12, mat.ochre, 0, top + 0.05, 0.5, 18, 1);
+  P(0.5, 0.3, 0.11, mat.ochre, 0, top + 0.05, 0.5, 18, 1, { crease: 0.003, settle: 0.1 });
 
   b.solids.push([X(x1), Z(y1), X(x2), Z(y2)]);
 }

@@ -33,7 +33,7 @@ scene.add(house.build.root, house.ground);
 // 每區環境反射探針；日夜切換時發光強度會整體改變的材質不複製。同一批材質再加上燈光遮罩（燈只照亮所在空間）
 const lightMask = new LightMask();
 const lights = new Lighting(scene, renderer, materials.mat, house.build.areaLights, (p) => lightMask.groupAt(p));
-const probes = new EnvProbes(renderer, scene, house.build.root, new Set([materials.mat.glow, materials.mat.glowSoft]), (s) => lightMask.patch(s));
+const probes = new EnvProbes(renderer, scene, house.build.root, new Set([materials.mat.glow, materials.mat.glowSoft, materials.mat.screen]), (s) => lightMask.patch(s));
 // 探針已依區域分好材質，接著合併靜態物件（會動的門、窗簾、鏡面、霧面玻璃不合併；天花板群組各自合併）；?nomerge 可關閉
 if (!new URLSearchParams(location.search).has('nomerge')) {
   const skip = new Set<THREE.Object3D>([...house.build.reflectors, ...house.build.frosted.map((f) => f.mesh), house.ceiling]);

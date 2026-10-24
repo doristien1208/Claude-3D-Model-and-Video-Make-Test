@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { X, Z } from '../core/units';
 import type { ItemOf } from '../data/query';
 import { add, gbox, leanOn, orient, rbox, worldUV, type Build } from './prims';
-import { cushion, drape, pillow, roundedPolygon, slab } from './shapes';
+import { cushion, drape, pillow, roundedPolygon, slab, type PillowOpt } from './shapes';
 
 /** 地毯；h 為厚度（客廳 Muuto Ply 平織 0.6 cm），inner 為淺色內層（只高出 1 mm，像織出來的色塊） */
 export function rug(b: Build, it: ItemOf<'rug'>): void {
@@ -74,15 +74,17 @@ export function sofaL(b: Build, it: ItemOf<'sofaL'>): void {
   const sn = 2, sw = (W - ARM - front) / sn;
   for (let i = 0; i < sn; i++) back(sw, new THREE.Vector3(front + sw * (i + 0.5), DECK, zEnd), N);
 
-  // 抱枕：靠在椅背墊前、下緣坐在坐墊上，後仰約 18°
-  const P = (w: number, h: number, t: number, m: THREE.Material, bottom: THREE.Vector3, out: THREE.Vector3, tilt: number, roll: number) =>
-    leanOn(g, pillow(w, h, t), m, bottom, out, h, tilt * (Math.PI / 180), roll * (Math.PI / 180));
-  const sy = SEAT + 0.008;
-  P(0.5, 0.5, 0.17, mat.pillowCream, new THREE.Vector3(front + 0.1, sy, 0.56), E, 18, -4);
-  P(0.45, 0.45, 0.15, mat.ochre, new THREE.Vector3(front + 0.2, sy, 0.7), E, 22, 6);
-  P(0.5, 0.5, 0.17, mat.pillowCream, new THREE.Vector3(front + 0.1, sy, zEnd - 0.34), E, 17, 3);
-  P(0.45, 0.45, 0.15, mat.ochre, new THREE.Vector3(front + 0.4, sy, zEnd - 0.1), N, 20, -5);
-  P(0.5, 0.3, 0.12, mat.pillowRust, new THREE.Vector3(W - ARM - 0.45, sy, zEnd - 0.08), N, 14, 2);
+  // 抱枕：靠在椅背墊前、下緣陷進坐墊約 1 cm，後仰約 18°。厚度依型錄（R&B、Mercana：50 × 50 約 13–15、45 × 45 約 10–12、
+  // 腰枕約 10–12）；靠著時填充往下沉（下緣厚、上緣薄），上緣略往前翻，方枕上緣輕輕手刀；bouclé 幾乎不起皺、麻布皺褶明顯
+  let seed = ox;
+  const P = (w: number, h: number, t: number, m: THREE.Material, bottom: THREE.Vector3, out: THREE.Vector3, tilt: number, roll: number, o: PillowOpt) =>
+    leanOn(g, pillow(w, h, t, { seed: ++seed, settle: 0.15, back: 0.85, ...o }), m, bottom, out, h, tilt * (Math.PI / 180), roll * (Math.PI / 180));
+  const sy = SEAT - 0.012, BOUCLE = { crease: 0.0012, chop: 0.035, roll: 0.015 }, LINEN = { crease: 0.003, chop: 0.03, roll: 0.012 };
+  P(0.5, 0.5, 0.14, mat.pillowCream, new THREE.Vector3(front + 0.1, sy, 0.56), E, 18, -4, BOUCLE);
+  P(0.45, 0.45, 0.12, mat.ochre, new THREE.Vector3(front + 0.2, sy, 0.7), E, 22, 6, LINEN);
+  P(0.5, 0.5, 0.14, mat.pillowCream, new THREE.Vector3(front + 0.1, sy, zEnd - 0.34), E, 17, 3, BOUCLE);
+  P(0.45, 0.45, 0.12, mat.ochre, new THREE.Vector3(front + 0.4, sy, zEnd - 0.1), N, 20, -5, LINEN);
+  P(0.5, 0.3, 0.11, mat.pillowRust, new THREE.Vector3(W - ARM - 0.45, sy, zEnd - 0.08), N, 14, 2, { crease: 0.003, settle: 0.1 });
 
   // 披毯：刷毛羊毛約 0.8 kg（約 2.5 mm 厚），三折後 43 寬、0.8 cm 厚，從坐墊上爬過東側扶手、在外側垂下；垂下的部分有直向波浪摺
   const TH = 0.008, h2 = TH / 2, ax = W - ARM, top = ARM_H, rr = 0.035 + h2;
